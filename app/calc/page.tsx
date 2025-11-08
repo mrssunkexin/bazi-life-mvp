@@ -44,7 +44,15 @@ export default function CalcPage() {
       // router.push(`/admin/reports/${report.id}`);
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to create report. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(
+        `Failed to create report.\n\n` +
+        `Error: ${errorMessage}\n\n` +
+        `Make sure you've set up the database:\n` +
+        `1. Run: npm run prisma:generate\n` +
+        `2. Run: npm run db:push\n` +
+        `3. Restart the dev server`
+      );
     } finally {
       setLoading(false);
     }
@@ -158,10 +166,3 @@ Location: ${data.location}
 
 This is a mock analysis. The full report can be edited in the admin panel.`;
 }
-
-const formData = {
-  birthDate: '',
-  birthTime: '',
-  gender: 'male',
-  location: '',
-};

@@ -34,6 +34,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(report, { status: 201 });
   } catch (error) {
     console.error('Error creating report:', error);
-    return NextResponse.json({ error: 'Failed to create report' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      {
+        error: 'Failed to create report',
+        details: errorMessage,
+        hint: 'Make sure the database is set up. Run: npm run db:push'
+      },
+      { status: 500 }
+    );
   }
 }

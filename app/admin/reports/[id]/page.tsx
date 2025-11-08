@@ -42,7 +42,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
       setAuthenticated(true);
       sessionStorage.setItem('admin_authenticated', 'true');
     } else {
-      alert('Invalid password');
+      alert('密码错误');
     }
   };
 
@@ -50,12 +50,12 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
     setLoading(true);
     try {
       const response = await fetch(`/api/reports/${id}`);
-      if (!response.ok) throw new Error('Failed to fetch report');
+      if (!response.ok) throw new Error('获取报告失败');
       const data = await response.json();
       setReport(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to load report');
+      alert('加载报告失败');
     } finally {
       setLoading(false);
     }
@@ -78,13 +78,13 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save report');
+      if (!response.ok) throw new Error('保存报告失败');
 
-      alert('Report saved successfully!');
+      alert('报告保存成功！');
       await fetchReport(); // Refresh data
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to save report');
+      alert('保存报告失败');
     } finally {
       setSaving(false);
     }
@@ -104,13 +104,13 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to publish report');
+      if (!response.ok) throw new Error('发布报告失败');
 
-      alert('Report published successfully!');
+      alert('报告发布成功！');
       await fetchReport();
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to publish report');
+      alert('发布报告失败');
     }
   };
 
@@ -120,15 +120,15 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <h1 className="text-2xl font-medium text-gray-900 mb-2">Admin Access</h1>
-            <p className="text-sm text-gray-500 mb-6">Enter password to continue</p>
+            <h1 className="text-2xl font-medium text-gray-900 mb-2">管理后台</h1>
+            <p className="text-sm text-gray-500 mb-6">请输入密码继续</p>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder="密码"
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                 autoFocus
               />
@@ -136,7 +136,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition"
               >
-                Login
+                登录
               </button>
             </form>
           </div>
@@ -149,7 +149,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-        <div className="text-gray-500">Loading report...</div>
+        <div className="text-gray-500">加载中...</div>
       </div>
     );
   }
@@ -158,7 +158,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   if (!report) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-        <div className="text-gray-500">Report not found</div>
+        <div className="text-gray-500">未找到报告</div>
       </div>
     );
   }
@@ -169,14 +169,14 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-medium text-gray-900">Edit Report</h1>
+            <h1 className="text-2xl font-medium text-gray-900">编辑报告</h1>
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                 report.status === 'published'
                   ? 'bg-green-100 text-green-700'
                   : 'bg-yellow-100 text-yellow-700'
               }`}>
-                {report.status}
+                {report.status === 'published' ? '已发布' : '草稿'}
               </span>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Title
+                标题
               </label>
               <input
                 type="text"
@@ -198,7 +198,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
             {/* Basic Summary */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Basic Summary
+                基础分析
               </label>
               <textarea
                 value={report.basicSummary}
@@ -211,7 +211,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
             {/* Full Content */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Content (Markdown)
+                完整内容（支持 Markdown）
               </label>
               <textarea
                 value={report.fullContent}
@@ -224,15 +224,15 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
             {/* Metadata */}
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
               <div>
-                <div className="text-xs text-gray-500">Created</div>
+                <div className="text-xs text-gray-500">创建时间</div>
                 <div className="text-sm text-gray-700 mt-1">
-                  {new Date(report.createdAt).toLocaleString()}
+                  {new Date(report.createdAt).toLocaleString('zh-CN')}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500">Updated</div>
+                <div className="text-xs text-gray-500">更新时间</div>
                 <div className="text-sm text-gray-700 mt-1">
-                  {new Date(report.updatedAt).toLocaleString()}
+                  {new Date(report.updatedAt).toLocaleString('zh-CN')}
                 </div>
               </div>
             </div>
@@ -244,14 +244,14 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
                 disabled={saving}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? '保存中...' : '保存修改'}
               </button>
               {report.status !== 'published' && (
                 <button
                   onClick={handlePublish}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition"
                 >
-                  Publish Report
+                  发布报告
                 </button>
               )}
             </div>
@@ -260,7 +260,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
 
         <div className="mt-6 text-center">
           <a href="/calc" className="text-sm text-gray-500 hover:text-gray-700 transition">
-            ← Back to Calculator
+            ← 返回测算页
           </a>
         </div>
       </div>

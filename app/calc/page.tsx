@@ -26,32 +26,33 @@ export default function CalcPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `BaZi Analysis - ${formData.birthDate}`,
+          title: `八字分析 - ${formData.birthDate}`,
           basicSummary,
           formJson: JSON.stringify(formData),
           status: 'draft',
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to create report');
+      if (!response.ok) throw new Error('创建报告失败');
 
       const report = await response.json();
 
       // Show result with admin link
-      alert(`Report created!\n\nBasic Summary:\n${basicSummary}\n\nOpen in Admin: /admin/reports/${report.id}`);
+      alert(`报告已创建！\n\n基础分析：\n${basicSummary}\n\n在管理后台打开：/admin/reports/${report.id}`);
 
       // Optionally redirect
       // router.push(`/admin/reports/${report.id}`);
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
       alert(
-        `Failed to create report.\n\n` +
-        `Error: ${errorMessage}\n\n` +
-        `Make sure you've set up the database:\n` +
-        `1. Run: npm run prisma:generate\n` +
-        `2. Run: npm run db:push\n` +
-        `3. Restart the dev server`
+        `创建报告失败。\n\n` +
+        `错误：${errorMessage}\n\n` +
+        `请确保已设置数据库：\n` +
+        `1. 运行：npm run prisma:generate\n` +
+        `2. 运行：npm run db:push\n` +
+        `3. 或运行：node scripts/init-db.js\n` +
+        `4. 重启开发服务器`
       );
     } finally {
       setLoading(false);
@@ -66,13 +67,13 @@ export default function CalcPage() {
     <div className="min-h-screen bg-[#fafafa] flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h1 className="text-2xl font-medium text-gray-900 mb-2">BaZi Life Analysis</h1>
-          <p className="text-sm text-gray-500 mb-8">Enter your birth details for analysis</p>
+          <h1 className="text-2xl font-medium text-gray-900 mb-2">八字命理分析</h1>
+          <p className="text-sm text-gray-500 mb-8">请输入您的出生信息进行测算</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Birth Date
+                出生日期
               </label>
               <input
                 type="date"
@@ -87,7 +88,7 @@ export default function CalcPage() {
 
             <div>
               <label htmlFor="birthTime" className="block text-sm font-medium text-gray-700 mb-2">
-                Birth Time
+                出生时间
               </label>
               <input
                 type="time"
@@ -102,7 +103,7 @@ export default function CalcPage() {
 
             <div>
               <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
-                Gender
+                性别
               </label>
               <select
                 id="gender"
@@ -111,14 +112,14 @@ export default function CalcPage() {
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white"
               >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+                <option value="male">男</option>
+                <option value="female">女</option>
               </select>
             </div>
 
             <div>
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                Birth Location
+                出生地点
               </label>
               <input
                 type="text"
@@ -126,7 +127,7 @@ export default function CalcPage() {
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                placeholder="e.g., Beijing, China"
+                placeholder="例如：北京市"
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               />
@@ -137,14 +138,14 @@ export default function CalcPage() {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Calculating...' : 'Calculate BaZi'}
+              {loading ? '计算中...' : '开始测算'}
             </button>
           </form>
         </div>
 
         <div className="mt-6 text-center">
           <a href="/" className="text-sm text-gray-500 hover:text-gray-700 transition">
-            ← Back to Home
+            ← 返回首页
           </a>
         </div>
       </div>
@@ -153,16 +154,16 @@ export default function CalcPage() {
 }
 
 // Mock BaZi calculation function
-function generateMockBaziSummary(data: typeof formData) {
-  const elements = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
+function generateMockBaziSummary(data: { birthDate: string; birthTime: string; gender: string; location: string }) {
+  const elements = ['木', '火', '土', '金', '水'];
   const dayMaster = elements[Math.floor(Math.random() * elements.length)];
   const luckyElement = elements[Math.floor(Math.random() * elements.length)];
 
-  return `Day Master: ${dayMaster}
-Lucky Element: ${luckyElement}
-Birth Date: ${data.birthDate}
-Birth Time: ${data.birthTime}
-Location: ${data.location}
+  return `日主：${dayMaster}
+喜用神：${luckyElement}
+出生日期：${data.birthDate}
+出生时间：${data.birthTime}
+出生地点：${data.location}
 
-This is a mock analysis. The full report can be edited in the admin panel.`;
+这是模拟分析结果。完整报告可以在管理后台进行编辑。`;
 }

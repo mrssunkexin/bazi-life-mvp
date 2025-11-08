@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:push": "prisma db push",
+    "db:init": "node scripts/init-db.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate || echo 'Prisma generation failed - run npm run prisma:generate manually'"
   },
@@ -18,6 +19,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "better-sqlite3": "^12.4.1",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"

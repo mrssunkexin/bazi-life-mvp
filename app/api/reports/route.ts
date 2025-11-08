@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json(reports);
   } catch (error) {
     console.error('Error fetching reports:', error);
-    return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 });
+    return NextResponse.json({ error: '获取报告列表失败' }, { status: 500 });
   }
 }
 
@@ -34,12 +34,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(report, { status: 201 });
   } catch (error) {
     console.error('Error creating report:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
     return NextResponse.json(
       {
-        error: 'Failed to create report',
+        error: '创建报告失败',
         details: errorMessage,
-        hint: 'Make sure the database is set up. Run: npm run db:push'
+        hint: '请确保数据库已设置。运行：npm run db:push 或 node scripts/init-db.js'
       },
       { status: 500 }
     );

@@ -7,8 +7,12 @@ A minimal web application for BaZi (Chinese astrology) life analysis with an adm
 - **Calculator Page** (`/calc`): User-facing form to input birth details (date, time, gender, location)
 - **Mock Analysis**: Generates basic BaZi summary with random elements
 - **Draft Reports**: Automatically creates draft reports in database
+- **Report View Page** (`/reports/[id]`): User-facing page to view report status and content
+  - Draft reports show "分析中" (Analyzing) status with waiting message
+  - Published reports show full content with Markdown support
 - **Admin Panel** (`/admin/reports/[id]`): Password-protected editor to refine and publish reports
 - **Clean UI**: Apple-inspired minimal design with low-saturation palette
+- **Full Chinese Localization**: All UI elements in Chinese
 
 ## Tech Stack
 
@@ -37,10 +41,10 @@ The `.env` file is already created with default values:
 
 ```env
 DATABASE_URL="file:./dev.db"
-ADMIN_PASSWORD="admin123"
+NEXT_PUBLIC_ADMIN_PASSWORD="admin123"
 ```
 
-You can modify the admin password as needed.
+You can modify the admin password as needed. Note: The password is prefixed with `NEXT_PUBLIC_` to make it accessible in client-side code.
 
 ### 3. Database Setup
 
@@ -71,25 +75,37 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Creating a Report
 
-1. Visit `/calc` or click "Get Started" from the home page
+1. Visit `/calc` or click "开始测算" from the home page
 2. Fill in birth details:
-   - Birth Date
-   - Birth Time
-   - Gender
-   - Birth Location
-3. Click "Calculate BaZi"
-4. A draft report is created and an alert shows the admin link
+   - 出生日期 (Birth Date)
+   - 出生时间 (Birth Time)
+   - 性别 (Gender)
+   - 出生地点 (Birth Location)
+3. Click "开始测算" (Start Analysis)
+4. A draft report is created and you'll be redirected to `/reports/[id]`
+
+### Viewing a Report
+
+1. After creating a report, you'll be redirected to `/reports/[id]`
+2. If the report is in draft status, you'll see:
+   - "正在分析中" (Analyzing) status
+   - "专业人员正在为您分析八字命理，请耐心等待" message
+   - Report creation time and ID
+3. Once published by admin, you'll see:
+   - "已完成" (Completed) status
+   - 基础摘要 (Basic Summary)
+   - 详细分析 (Full Analysis) with Markdown formatting
 
 ### Editing in Admin
 
-1. Visit `/admin/reports/[id]` (use the ID from the alert or database)
+1. Visit `/admin/reports/[id]` directly with the report ID
 2. Enter password (default: `admin123`)
 3. Edit the report:
-   - Title
-   - Basic Summary
-   - Full Content (supports Markdown)
-4. Click "Save Changes" to save as draft
-5. Click "Publish Report" to mark as published
+   - 标题 (Title)
+   - 基础摘要 (Basic Summary)
+   - 完整内容 (Full Content) - supports Markdown
+4. Click "保存修改" (Save Changes) to save as draft
+5. Click "发布报告" (Publish Report) to mark as published and make it visible to users
 
 ## Database Schema
 
@@ -112,7 +128,8 @@ model Report {
 - **POST /api/reports** - Create a new report
 - **GET /api/reports** - Get all reports
 - **GET /api/reports/[id]** - Get a specific report
-- **PUT /api/reports/[id]** - Update a report
+- **PATCH /api/reports/[id]** - Update a report (partial update)
+- **PUT /api/reports/[id]** - Update a report (backward compatibility, redirects to PATCH)
 
 ## Scripts
 
@@ -133,6 +150,8 @@ bazi-life-mvp/
 │   ├── admin/reports/[id]/page.tsx    # Admin editor
 │   ├── api/reports/                   # API routes
 │   ├── calc/page.tsx                  # Calculator form
+│   ├── dev/page.tsx                   # Dev preview & testing page
+│   ├── reports/[id]/page.tsx          # User report view
 │   ├── globals.css                    # Global styles
 │   └── page.tsx                       # Home page
 ├── lib/

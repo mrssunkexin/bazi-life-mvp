@@ -23,8 +23,8 @@ export async function GET(
   }
 }
 
-// PUT update report
-export async function PUT(
+// PATCH update report
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -49,4 +49,12 @@ export async function PUT(
     console.error('Error updating report:', error);
     return NextResponse.json({ error: 'Failed to update report' }, { status: 500 });
   }
+}
+
+// PUT update report (kept for backward compatibility)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return PATCH(request, { params });
 }

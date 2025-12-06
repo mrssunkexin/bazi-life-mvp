@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 // 用户表
@@ -29,6 +30,8 @@ model Voucher {
   usedAt        DateTime?
   reportId      String?  @unique
   report        Report?  @relation(fields: [reportId], references: [id])
+
+  @@index([reportId])
 }
 
 // 报告表
@@ -58,18 +61,21 @@ model Report {
   baziDay       String    @default("")  // 日柱
   baziHour      String    @default("")  // 时柱
   trueSolarTime String    @default("")  // 真太阳时
-  wuxing        String    @default("")  // 五行分析JSON
-  dayun         String    @default("")  // 大运分析JSON
+  wuxing        String    @default("") @db.Text  // 五行分析JSON
+  dayun         String    @default("") @db.Text  // 大运分析JSON
 
   // 报告内容
   title         String
-  basicSummary  String    @default("")
-  fullContent   String    @default("")  // 按模板生成的完整分析
+  basicSummary  String    @default("") @db.Text
+  fullContent   String    @default("") @db.LongText  // 按模板生成的完整分析
   publishAt     DateTime?
 
   // 券码关联
   voucher       Voucher?
 
   // 原始表单数据（保留兼容）
-  formJson      String    @default("{}")
+  formJson      String    @default("{}") @db.Text
+
+  @@index([userId])
+  @@index([createdAt])
 }

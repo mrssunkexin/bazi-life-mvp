@@ -8,6 +8,11 @@ async function main() {
   // Create a sample report
   const report = await prisma.report.create({
     data: {
+      name: '测试用户',
+      gender: '男',
+      birthDate: '1990-01-01',
+      birthTime: '10:00',
+      city: '北京',
       title: 'Sample BaZi Analysis Report',
       status: 'draft',
       basicSummary: 'This is a sample BaZi life analysis report for testing purposes.',

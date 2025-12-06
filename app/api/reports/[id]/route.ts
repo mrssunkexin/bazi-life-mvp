@@ -13,13 +13,13 @@ export async function GET(
     });
 
     if (!report) {
-      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+      return NextResponse.json({ error: '未找到报告' }, { status: 404 });
     }
 
     return NextResponse.json(report);
   } catch (error) {
     console.error('Error fetching report:', error);
-    return NextResponse.json({ error: 'Failed to fetch report' }, { status: 500 });
+    return NextResponse.json({ error: '获取报告失败' }, { status: 500 });
   }
 }
 
@@ -47,7 +47,7 @@ export async function PATCH(
     return NextResponse.json(report);
   } catch (error) {
     console.error('Error updating report:', error);
-    return NextResponse.json({ error: 'Failed to update report' }, { status: 500 });
+    return NextResponse.json({ error: '更新报告失败' }, { status: 500 });
   }
 }
 

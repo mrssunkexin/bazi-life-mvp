@@ -46,7 +46,9 @@ NEXT_PUBLIC_ADMIN_PASSWORD="admin123"
 
 You can modify the admin password as needed. Note: The password is prefixed with `NEXT_PUBLIC_` to make it accessible in client-side code.
 
-### 3. Database Setup
+### 3. Database Setup (REQUIRED)
+
+⚠️ **This step is required before running the app!**
 
 Generate Prisma client and create the database:
 
@@ -61,7 +63,10 @@ npm run db:push
 npm run db:seed
 ```
 
-**Note**: If you encounter errors with Prisma engine downloads in restricted environments, you may need to run the commands with `PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1` prefix.
+**Troubleshooting**: If you encounter errors:
+- Try prefixing commands with `PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1`
+- See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed help
+- Make sure the `prisma/dev.db` file exists after running `db:push`
 
 ### 4. Run Development Server
 

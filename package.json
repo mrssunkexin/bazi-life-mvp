@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:push": "prisma db push",
+    "db:init": "node scripts/init-db.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate || echo 'Prisma generation failed - run npm run prisma:generate manually'"
   },

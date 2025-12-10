@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
 
 // GET single report
 export async function GET(
@@ -13,13 +14,13 @@ export async function GET(
     });
 
     if (!report) {
-      return NextResponse.json({ error: '未找到报告' }, { status: 404 });
+      return errorResponse('未找到报告', ErrorCodes.NOT_FOUND, 404);
     }
 
-    return NextResponse.json(report);
-  } catch (error) {
+    return successResponse(report);
+  } catch (error: any) {
     console.error('Error fetching report:', error);
-    return NextResponse.json({ error: '获取报告失败' }, { status: 500 });
+    return errorResponse(error.message || '获取报告失败', ErrorCodes.SERVER_ERROR, 500);
   }
 }
 
@@ -44,10 +45,10 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json(report);
-  } catch (error) {
+    return successResponse(report);
+  } catch (error: any) {
     console.error('Error updating report:', error);
-    return NextResponse.json({ error: '更新报告失败' }, { status: 500 });
+    return errorResponse(error.message || '更新报告失败', ErrorCodes.SERVER_ERROR, 500);
   }
 }
 

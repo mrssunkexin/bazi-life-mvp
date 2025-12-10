@@ -92,7 +92,8 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
     try {
       const response = await fetch(`/api/reports/${id}`);
       if (!response.ok) throw new Error('获取报告失败');
-      const data = await response.json();
+      const result = await response.json();
+      const data = result.data || result;
       setReport(data);
       // Parse content into sections
       setSections(parseContentIntoSections(data.fullContent || ''));

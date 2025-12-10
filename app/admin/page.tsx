@@ -21,7 +21,9 @@ export default function AdminHomePage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [reports, setReports] = useState<Report[]>([]);
+  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'generating'>('all');
 
   useEffect(() => {
     const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
@@ -47,14 +49,50 @@ export default function AdminHomePage() {
     try {
       const response = await fetch('/api/reports');
       if (!response.ok) throw new Error('获取报告列表失败');
-      const data = await response.json();
-      setReports(data);
+      const result = await response.json();
+      const data = result.data || result;
+      setReports(Array.isArray(data) ? data : []);
+      setFilteredReports(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('错误:', error);
       alert('加载报告列表失败');
+      setReports([]);
+      setFilteredReports([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // 筛选报告
+  useEffect(() => {
+    if (statusFilter === 'all') {
+      setFilteredReports(reports);
+    } else if (statusFilter === 'generating') {
+      // 判断为"生成中"的条件: status=draft 且 fullContent='报告生成中...'
+      setFilteredReports(reports.filter(r =>
+        r.status === 'draft' && (r as any).fullContent === '报告生成中...'
+      ));
+    } else {
+      setFilteredReports(reports.filter(r => r.status === statusFilter));
+    }
+  }, [statusFilter, reports]);
+
+  // 计算各状态数量
+  const getStatusCount = (status: 'published' | 'draft' | 'generating') => {
+    if (status === 'generating') {
+      return reports.filter(r =>
+        r.status === 'draft' && (r as any).fullContent === '报告生成中...'
+      ).length;
+    }
+    return reports.filter(r => r.status === status).length;
+  };
+
+  // 获取报告的实际状态(用于显示)
+  const getReportStatus = (report: Report) => {
+    if (report.status === 'draft' && (report as any).fullContent === '报告生成中...') {
+      return 'generating';
+    }
+    return report.status;
   };
 
   // Password gate
@@ -107,24 +145,50 @@ export default function AdminHomePage() {
           <p className="text-gray-600">八字命理报告管理系统</p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        {/* Stats - 可点击筛选 */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`bg-white rounded-xl shadow-sm border-2 p-6 text-left transition hover:shadow-md ${
+              statusFilter === 'all' ? 'border-blue-500' : 'border-gray-100'
+            }`}
+          >
             <div className="text-sm text-gray-600 mb-1">总报告数</div>
             <div className="text-3xl font-semibold text-gray-900">{reports.length}</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          </button>
+          <button
+            onClick={() => setStatusFilter('published')}
+            className={`bg-white rounded-xl shadow-sm border-2 p-6 text-left transition hover:shadow-md ${
+              statusFilter === 'published' ? 'border-green-500' : 'border-gray-100'
+            }`}
+          >
             <div className="text-sm text-gray-600 mb-1">已发布</div>
             <div className="text-3xl font-semibold text-green-600">
-              {reports.filter(r => r.status === 'published').length}
+              {getStatusCount('published')}
             </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          </button>
+          <button
+            onClick={() => setStatusFilter('draft')}
+            className={`bg-white rounded-xl shadow-sm border-2 p-6 text-left transition hover:shadow-md ${
+              statusFilter === 'draft' ? 'border-yellow-500' : 'border-gray-100'
+            }`}
+          >
             <div className="text-sm text-gray-600 mb-1">草稿</div>
             <div className="text-3xl font-semibold text-yellow-600">
-              {reports.filter(r => r.status === 'draft').length}
+              {getStatusCount('draft')}
             </div>
-          </div>
+          </button>
+          <button
+            onClick={() => setStatusFilter('generating')}
+            className={`bg-white rounded-xl shadow-sm border-2 p-6 text-left transition hover:shadow-md ${
+              statusFilter === 'generating' ? 'border-blue-500' : 'border-gray-100'
+            }`}
+          >
+            <div className="text-sm text-gray-600 mb-1">生成中</div>
+            <div className="text-3xl font-semibold text-blue-600">
+              {getStatusCount('generating')}
+            </div>
+          </button>
         </div>
 
         {/* Reports Table */}
@@ -133,9 +197,12 @@ export default function AdminHomePage() {
             <h2 className="text-lg font-medium text-gray-900">报告列表</h2>
           </div>
 
-          {reports.length === 0 ? (
+          {filteredReports.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
-              暂无报告
+              {statusFilter === 'all' ? '暂无报告' : `暂无${
+                statusFilter === 'published' ? '已发布' :
+                statusFilter === 'draft' ? '草稿' : '生成中'
+              }报告`}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -153,46 +220,59 @@ export default function AdminHomePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {reports.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {report.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {report.gender === 'male' ? '男' : '女'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {report.birthDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {report.city}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-600">
-                        {report.baziYear} {report.baziMonth}<br/>
-                        {report.baziDay} {report.baziHour}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          report.status === 'published'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {report.status === 'published' ? '已发布' : '草稿'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(report.createdAt).toLocaleDateString('zh-CN')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          href={`/admin/reports/${report.id}`}
-                          className="text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          编辑
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredReports.map((report) => {
+                    const actualStatus = getReportStatus(report);
+                    return (
+                      <tr key={report.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {report.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {report.gender === 'male' ? '男' : '女'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {report.birthDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {report.city}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-600">
+                          {report.baziYear} {report.baziMonth}<br/>
+                          {report.baziDay} {report.baziHour}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            actualStatus === 'published'
+                              ? 'bg-green-100 text-green-700'
+                              : actualStatus === 'generating'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {actualStatus === 'published' ? '已发布' : actualStatus === 'generating' ? '生成中' : '草稿'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                          {new Date(report.createdAt).toLocaleString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                          })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <Link
+                            href={`/admin/reports/${report.id}`}
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            编辑
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

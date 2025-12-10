@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { calculateBazi } from '@/lib/bazi';
 import { generateEnhancedReport, mergeFinalReport } from '@/lib/report-generator-enhanced';
+import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
 
 // POST - Create new report
 export async function POST(request: NextRequest) {
@@ -19,10 +20,7 @@ export async function POST(request: NextRequest) {
 
     // 验证必填字段
     if (!name || !gender || !birthDate || !birthTime || !city) {
-      return NextResponse.json(
-        { error: '缺少必填字段' },
-        { status: 400 }
-      );
+      return errorResponse('缺少必填字段', ErrorCodes.VALIDATION_ERROR, 400);
     }
 
     // 计算八字
@@ -141,13 +139,10 @@ export async function POST(request: NextRequest) {
     })();
 
     // 立即返回报告（此时报告还在生成中）
-    return NextResponse.json(report, { status: 201 });
-  } catch (error) {
+    return successResponse(report, 201);
+  } catch (error: any) {
     console.error('❌ Error creating report:', error);
-    return NextResponse.json(
-      { error: 'Failed to create report' },
-      { status: 500 }
-    );
+    return errorResponse(error.message || 'Failed to create report', ErrorCodes.SERVER_ERROR, 500);
   }
 }
 
@@ -155,15 +150,28 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const reports = await prisma.report.findMany({
+      select: {
+        id: true,
+        name: true,
+        gender: true,
+        birthDate: true,
+        birthTime: true,
+        city: true,
+        status: true,
+        baziYear: true,
+        baziMonth: true,
+        baziDay: true,
+        baziHour: true,
+        createdAt: true,
+        // 不返回 fullContent, basicSummary, wuxing, dayun 等大字段
+      },
       orderBy: { createdAt: 'desc' },
+      take: 100, // 最多返回100条
     });
 
-    return NextResponse.json(reports);
-  } catch (error) {
+    return successResponse(reports);
+  } catch (error: any) {
     console.error('Error fetching reports:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch reports' },
-      { status: 500 }
-    );
+    return errorResponse(error.message || 'Failed to fetch reports', ErrorCodes.SERVER_ERROR, 500);
   }
 }

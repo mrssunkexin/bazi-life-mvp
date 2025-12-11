@@ -61,7 +61,7 @@ model Report {
   baziHour      String    @default("")  // 时柱
   trueSolarTime String    @default("")  // 真太阳时
   wuxing        String    @db.Text // 五行分析JSON
-  dayun         String    @db.Text // 大运分析JSON
+  dayun         String?   @db.Text // 大运分析JSON
 
   // 报告内容
   title         String

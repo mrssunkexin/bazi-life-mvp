@@ -1,5 +1,5 @@
-# 使用 Node.js 18 作为基础镜像
-FROM node:18-alpine AS base
+# 使用 Node.js 20 作为基础镜像 (适配 Next.js 15+/React 19)
+FROM node:20-alpine AS base
 
 # 1. 依赖安装阶段
 FROM base AS deps
@@ -7,6 +7,7 @@ WORKDIR /app
 
 # 复制依赖文件
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+COPY prisma ./prisma
 
 # 安装依赖 (根据你的包管理器自动选择)
 RUN \

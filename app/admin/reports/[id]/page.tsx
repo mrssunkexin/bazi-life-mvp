@@ -214,7 +214,15 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-medium text-gray-900">编辑报告</h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => window.location.href = '/admin'}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition text-sm"
+              >
+                ← 返回报告列表
+              </button>
+              <h1 className="text-2xl font-medium text-gray-900">编辑报告</h1>
+            </div>
             <div className="flex items-center gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                 report.status === 'published'

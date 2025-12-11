@@ -11,10 +11,13 @@ interface Report {
   city: string;
   status: string;
   createdAt: string;
+  generatedAt: string | null;
+  publishAt: string | null;
   baziYear: string;
   baziMonth: string;
   baziDay: string;
   baziHour: string;
+  fullContent: string;  // 新增：用于判断状态
 }
 
 export default function AdminHomePage() {
@@ -23,7 +26,7 @@ export default function AdminHomePage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [filteredReports, setFilteredReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'generating'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'generating' | 'pending_pay'>('all');
 
   useEffect(() => {
     const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
@@ -68,31 +71,60 @@ export default function AdminHomePage() {
     if (statusFilter === 'all') {
       setFilteredReports(reports);
     } else if (statusFilter === 'generating') {
-      // 判断为"生成中"的条件: status=draft 且 fullContent='报告生成中...'
+      // 判断为"生成中"的条件: fullContent='报告生成中...'
+      setFilteredReports(reports.filter(r => r.fullContent === '报告生成中...'));
+    } else if (statusFilter === 'pending_pay') {
+      // 待激活：fullContent='待激活'
+      setFilteredReports(reports.filter(r => r.fullContent === '待激活'));
+    } else if (statusFilter === 'draft') {
+      // 草稿：AI生成完成且未发布
       setFilteredReports(reports.filter(r =>
-        r.status === 'draft' && (r as any).fullContent === '报告生成中...'
+        r.status === 'draft' &&
+        r.fullContent !== '待激活' &&
+        r.fullContent !== '报告生成中...'
       ));
     } else {
+      // 已发布
       setFilteredReports(reports.filter(r => r.status === statusFilter));
     }
   }, [statusFilter, reports]);
 
   // 计算各状态数量
-  const getStatusCount = (status: 'published' | 'draft' | 'generating') => {
+  const getStatusCount = (status: 'published' | 'draft' | 'generating' | 'pending_pay') => {
     if (status === 'generating') {
+      // 生成中：fullContent='报告生成中...'
+      return reports.filter(r => r.fullContent === '报告生成中...').length;
+    }
+    if (status === 'pending_pay') {
+      // 待激活：fullContent='待激活'
+      return reports.filter(r => r.fullContent === '待激活').length;
+    }
+    if (status === 'draft') {
+      // 草稿：AI生成完成且未发布
       return reports.filter(r =>
-        r.status === 'draft' && (r as any).fullContent === '报告生成中...'
+        r.status === 'draft' &&
+        r.fullContent !== '待激活' &&
+        r.fullContent !== '报告生成中...'
       ).length;
     }
+    // 已发布
     return reports.filter(r => r.status === status).length;
   };
 
   // 获取报告的实际状态(用于显示)
   const getReportStatus = (report: Report) => {
-    if (report.status === 'draft' && (report as any).fullContent === '报告生成中...') {
+    if (report.fullContent === '待激活') {
+      return 'pending_pay';
+    }
+    if (report.fullContent === '报告生成中...') {
       return 'generating';
     }
-    return report.status;
+    if (report.status === 'draft' &&
+        report.fullContent !== '待激活' &&
+        report.fullContent !== '报告生成中...') {
+      return 'draft';
+    }
+    return report.status;  // published
   };
 
   // Password gate
@@ -140,13 +172,29 @@ export default function AdminHomePage() {
     <div className="min-h-screen bg-[#fafafa] p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-medium text-gray-900 mb-2">管理后台</h1>
-          <p className="text-gray-600">八字命理报告管理系统</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-medium text-gray-900 mb-2">管理后台</h1>
+            <p className="text-gray-600">八字命理报告管理系统</p>
+          </div>
+          <div className="flex gap-3">
+            <Link
+              href="/admin/config"
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            >
+              配置管理
+            </Link>
+            <Link
+              href="/admin/vouchers"
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            >
+              兑换码管理
+            </Link>
+          </div>
         </div>
 
         {/* Stats - 可点击筛选 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <button
             onClick={() => setStatusFilter('all')}
             className={`bg-white rounded-xl shadow-sm border-2 p-6 text-left transition hover:shadow-md ${
@@ -189,6 +237,17 @@ export default function AdminHomePage() {
               {getStatusCount('generating')}
             </div>
           </button>
+          <button
+            onClick={() => setStatusFilter('pending_pay')}
+            className={`bg-white rounded-xl shadow-sm border-2 p-6 text-left transition hover:shadow-md ${
+              statusFilter === 'pending_pay' ? 'border-red-500' : 'border-gray-100'
+            }`}
+          >
+            <div className="text-sm text-gray-600 mb-1">🔒 待激活</div>
+            <div className="text-3xl font-semibold text-red-600">
+              {getStatusCount('pending_pay')}
+            </div>
+          </button>
         </div>
 
         {/* Reports Table */}
@@ -214,8 +273,11 @@ export default function AdminHomePage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">出生日期</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">城市</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">八字</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">生成时间</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">发布时间</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
                   </tr>
                 </thead>
@@ -241,14 +303,33 @@ export default function AdminHomePage() {
                           {report.baziDay} {report.baziHour}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          {report.fullContent && report.fullContent !== '待激活' && report.fullContent !== '报告生成中...' && report.fullContent.includes('纯算法解读') ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                              算法版
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                              AI版
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             actualStatus === 'published'
                               ? 'bg-green-100 text-green-700'
                               : actualStatus === 'generating'
                               ? 'bg-blue-100 text-blue-700'
-                              : 'bg-yellow-100 text-yellow-700'
+                              : actualStatus === 'draft'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
                           }`}>
-                            {actualStatus === 'published' ? '已发布' : actualStatus === 'generating' ? '生成中' : '草稿'}
+                            {actualStatus === 'published'
+                              ? '已发布'
+                              : actualStatus === 'generating'
+                              ? '生成中'
+                              : actualStatus === 'draft'
+                              ? '草稿'
+                              : '待激活'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
@@ -261,6 +342,36 @@ export default function AdminHomePage() {
                             second: '2-digit',
                             hour12: false
                           })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                          {report.generatedAt ? (
+                            new Date(report.generatedAt).toLocaleString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false
+                            })
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                          {report.publishAt ? (
+                            new Date(report.publishAt).toLocaleString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false
+                            })
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <Link

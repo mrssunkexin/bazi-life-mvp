@@ -32,6 +32,8 @@ WORKDIR /app
 
 ENV NODE_ENV production
 ENV PORT 80
+# 设置 SQLite 数据库路径（解决 DATABASE_URL missing 报错）
+ENV DATABASE_URL="file:./dev.db"
 
 # 创建非 root 用户以提高安全性
 RUN addgroup --system --gid 1001 nodejs
@@ -48,4 +50,5 @@ COPY --from=builder /app/package.json ./package.json
 # 微信云托管默认监听 80 端口
 EXPOSE 80
 
-CMD ["npm", "start"]
+# 启动前先初始化 SQLite 数据库结构，然后启动应用
+CMD ["/bin/sh", "-c", "npx prisma db push && npm start"]

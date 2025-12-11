@@ -43,7 +43,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-USER nextjs
+# USER nextjs
 
 # 微信云托管默认监听 80 端口
 EXPOSE 80

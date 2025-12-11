@@ -60,13 +60,13 @@ model Report {
   baziDay       String    @default("")  // 日柱
   baziHour      String    @default("")  // 时柱
   trueSolarTime String    @default("")  // 真太阳时
-  wuxing        String    @default("") @db.Text // 五行分析JSON
-  dayun         String    @default("") @db.Text // 大运分析JSON
+  wuxing        String    @db.Text // 五行分析JSON
+  dayun         String    @db.Text // 大运分析JSON
 
   // 报告内容
   title         String
-  basicSummary  String    @default("") @db.Text
-  fullContent   String    @default("") @db.Text // 按模板生成的完整分析
+  basicSummary  String    @db.Text
+  fullContent   String    @db.Text // 按模板生成的完整分析
   generatedAt   DateTime? // AI生成完成时间
   publishAt     DateTime? // 发布时间
 
@@ -74,7 +74,7 @@ model Report {
   voucher       Voucher?
 
   // 原始表单数据（保留兼容）
-  formJson      String    @default("{}") @db.Text
+  formJson      String    @db.Text
 
   @@index([userId])
   @@index([createdAt])

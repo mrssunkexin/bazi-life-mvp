@@ -12,12 +12,21 @@ datasource db {
 
 // 用户表
 model User {
-  id            String   @id @default(cuid())
-  phone         String   @unique
-  password      String   // hashed password
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  reports       Report[]
+  id               String   @id @default(cuid())
+  openid           String   @unique  // 小程序openid（必须）
+  unionid          String?  @unique  // 开放平台unionid（预留）
+  mpOpenid         String?  @unique  // 服务号openid（预留）
+  nickname         String?  // 用户昵称（可选授权）
+  avatarUrl        String?  // 用户头像（可选授权）
+  hasAuthorized    Boolean  @default(false) // 是否完成过用户信息授权
+  subscribeStatus  Boolean  @default(false) // 是否关注服务号（预留）
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  reports          Report[]
+  fortune2026Reports Fortune2026Report[]
+
+  @@index([openid])
+  @@index([unionid])
 }
 
 // 券码表
@@ -29,8 +38,11 @@ model Voucher {
   usedAt        DateTime?
   reportId      String?  @unique
   report        Report?  @relation(fields: [reportId], references: [id])
+  fortune2026ReportId  String?  @unique
+  fortune2026Report    Fortune2026Report?  @relation(fields: [fortune2026ReportId], references: [id])
 
   @@index([reportId])
+  @@index([fortune2026ReportId])
 }
 
 // 报告表
@@ -92,4 +104,55 @@ model Configuration {
   updatedAt   DateTime @updatedAt
 
   @@index([key])
+}
+
+// 2026运势报告表
+model Fortune2026Report {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  status        String    @default("draft") // draft, published
+
+  // 用户关联
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+
+  // 基本信息
+  name          String    // 姓名
+  gender        String    // 性别
+  birthDate     String    // 出生日期
+  birthTime     String    // 出生时间
+  country       String    @default("中国") // 国家
+  city          String    @default("")     // 城市
+  longitude     Float?    // 经度
+  latitude      Float?    // 纬度
+
+  // 八字信息(与Report保持一致)
+  baziYear      String    @default("")  // 年柱
+  baziMonth     String    @default("")  // 月柱
+  baziDay       String    @default("")  // 日柱
+  baziHour      String    @default("")  // 时柱
+  trueSolarTime String    @default("")  // 真太阳时
+  wuxing        String    @db.Text // 五行分析JSON
+  dayun         String    @db.Text // 大运分析JSON
+
+  // 报告内容
+  title         String
+  basicSummary  String    @db.Text
+  fullContent   String    @db.Text
+
+  // 2026运势扩展字段(JSON预留)
+  fortune2026Data String  @db.Text
+
+  generatedAt   DateTime? // AI生成完成时间
+  publishAt     DateTime? // 发布时间
+
+  // 券码关联
+  voucher       Voucher?
+
+  // 原始表单数据
+  formJson      String    @db.Text
+
+  @@index([userId])
+  @@index([createdAt])
 }

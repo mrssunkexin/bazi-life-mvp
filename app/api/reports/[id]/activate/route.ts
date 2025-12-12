@@ -125,6 +125,8 @@ export async function POST(
             fullContent,
             dayun: JSON.stringify(result.analysis.dayun.dayunList),
             generatedAt: new Date(),
+            // AI 生成完成后保持草稿，待人工发布
+            status: 'draft',
           },
         });
 
@@ -138,6 +140,7 @@ export async function POST(
           where: { id: report.id },
           data: {
             fullContent: '报告生成失败，请联系管理员。',
+            status: 'draft', // 保持草稿，方便人工处理
           },
         });
       }

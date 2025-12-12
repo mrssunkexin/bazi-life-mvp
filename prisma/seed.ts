@@ -3,30 +3,72 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  console.log('🌱 开始填充数据库...');
 
-  // Create a sample report
-  const report = await prisma.report.create({
-    data: {
-      name: '测试用户',
-      gender: '男',
-      birthDate: '1990-01-01',
-      birthTime: '10:00',
-      city: '北京',
-      title: 'Sample BaZi Analysis Report',
-      status: 'draft',
-      basicSummary: 'This is a sample BaZi life analysis report for testing purposes.',
-      fullContent: '# Full Analysis\n\nThis would contain the detailed BaZi analysis including:\n- Pillars of Destiny\n- Element Analysis\n- Life Path Recommendations',
-      formJson: JSON.stringify({
-        birthDate: '1990-01-01',
-        birthTime: '10:00',
-        gender: 'male',
-        location: 'Beijing, China'
-      }),
+  // 1. 填充配置数据
+  const configs = [
+    {
+      key: 'app_title',
+      value: '生辰五行',
+      type: 'text',
+      label: '小程序标题',
+      description: '首页显示的标题文字'
     },
-  });
+    {
+      key: 'show_voucher_code',
+      value: 'true',
+      type: 'boolean',
+      label: '显示兑换码',
+      description: '-'
+    },
+    {
+      key: 'report_generation_mode',
+      value: 'ai_generation',
+      type: 'text',
+      label: '报告生成模式',
+      description: 'algorithm_only或ai_generation'
+    },
+    {
+      key: 'submit_button_text',
+      value: '五行分析',
+      type: 'text',
+      label: '立即测算按钮文字',
+      description: '首页提交按钮文字,最多14字符'
+    },
+    {
+      key: 'show_fortune_2026_button',
+      value: 'true',
+      type: 'boolean',
+      label: '显示2026运势按钮',
+      description: '控制首页是否显示2026运势测算按钮'
+    },
+    {
+      key: 'fortune_2026_button_text',
+      value: '2026运势分析',
+      type: 'text',
+      label: '2026运势按钮文字',
+      description: '2026运势按钮文字,最多14字符'
+    },
+    {
+      key: 'show_basic_report_button',
+      value: 'false',
+      type: 'boolean',
+      label: '显示基础报告按钮',
+      description: '控制首页是否显示基础/八字测算按钮'
+    }
+  ];
 
-  console.log('Created sample report:', report);
+  console.log('📝 填充配置项...');
+  for (const config of configs) {
+    await prisma.configuration.upsert({
+      where: { key: config.key },
+      update: config,
+      create: config
+    });
+    console.log(`  ✅ ${config.key}: ${config.value}`);
+  }
+
+  console.log('✨ 数据库填充完成!');
 }
 
 main()

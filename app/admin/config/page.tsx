@@ -76,14 +76,14 @@ export default function ConfigPage() {
       if (data.success) {
         alert(editingKey ? '配置已更新' : '配置已创建');
         setEditingKey(null);
-        setFormData({
-          key: '',
-          value: '',
-          type: 'text',
-          label: '',
-          description: ''
-        });
-        loadConfigs();
+    setFormData({
+      key: '',
+      value: 'true', // 默认布尔值为 true，避免空值导致校验失败
+      type: 'text',
+      label: '',
+      description: ''
+    });
+    loadConfigs();
       } else {
         alert('保存失败: ' + data.error);
       }
@@ -219,7 +219,12 @@ export default function ConfigPage() {
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                onChange={(e) => {
+                  const newType = e.target.value as any;
+                  // 如果切换到布尔类型且当前值为空，默认设为 true 避免必填校验失败
+                  const newValue = newType === 'boolean' && formData.value === '' ? 'true' : formData.value;
+                  setFormData({ ...formData, type: newType, value: newValue });
+                }}
                 style={{
                   width: '100%',
                   padding: '10px',

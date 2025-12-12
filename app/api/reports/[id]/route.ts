@@ -9,12 +9,23 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const report = await prisma.report.findUnique({
-      where: { id },
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    // 验证userId
+    if (!userId) {
+      return errorResponse('缺少用户ID', ErrorCodes.VALIDATION_ERROR, 400);
+    }
+
+    const report = await prisma.report.findFirst({
+      where: {
+        id,
+        userId // 验证报告归属
+      },
     });
 
     if (!report) {
-      return errorResponse('未找到报告', ErrorCodes.NOT_FOUND, 404);
+      return errorResponse('未找到报告或无权访问', ErrorCodes.NOT_FOUND, 404);
     }
 
     return successResponse(report);

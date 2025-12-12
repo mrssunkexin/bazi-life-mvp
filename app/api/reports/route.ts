@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { calculateBazi } from '@/lib/bazi';
-import { calculateShishen } from '@/lib/bazi-shishen';
-import { calculateCanggan } from '@/lib/bazi-canggan';
+import { calculateBaziUnified } from '@/lib/bazi-calculator';
 import { generateEnhancedReport, mergeFinalReport } from '@/lib/report-generator-enhanced';
 import { generateBasicReport } from '@/lib/report-generator-basic';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
@@ -12,6 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
+      userId,
       name,
       gender,
       birthDate,
@@ -21,6 +20,17 @@ export async function POST(request: NextRequest) {
       latitude,
       voucherCode, // 新增：兑换码（可选）
     } = body;
+
+    // 验证userId
+    if (!userId) {
+      return errorResponse('缺少用户ID', ErrorCodes.VALIDATION_ERROR, 400);
+    }
+
+    // 验证用户存在
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return errorResponse('用户不存在', ErrorCodes.NOT_FOUND, 404);
+    }
 
     // 验证必填字段
     if (!name || !gender || !birthDate || !birthTime || !city) {
@@ -40,13 +50,14 @@ export async function POST(request: NextRequest) {
       console.log('⚠️ 获取配置失败，使用默认模式: ai_generation');
     }
 
-    // 计算八字（先计算，所有模式都需要）
-    const bazi = calculateBazi(
+    // 计算八字（使用统一入口，确保与2026报告一致）
+    const baziResult = calculateBaziUnified({
       birthDate,
       birthTime,
+      city,
       longitude,
       latitude
-    );
+    });
 
     // 生成标题
     const title = `${name}的八字命理分析报告`;
@@ -57,12 +68,6 @@ export async function POST(request: NextRequest) {
       // ==================== 算法模式 ====================
       console.log('🔧 [算法模式] 开始生成纯算法报告...');
 
-      // 执行十神计算
-      const shishen = calculateShishen(bazi);
-
-      // 执行藏干计算
-      const canggan = calculateCanggan(bazi);
-
       // 生成基础报告
       const basicReport = generateBasicReport({
         reportId: crypto.randomUUID(),
@@ -71,17 +76,18 @@ export async function POST(request: NextRequest) {
         birthDate,
         birthTime,
         location: city,
-        bazi,
-        shishen,
-        canggan,
+        bazi: baziResult,
+        shishen: baziResult.shishen,
+        canggan: baziResult.canggan,
         birthYear,
       });
 
       // 创建报告（立即发布）
       const report = await prisma.report.create({
         data: {
+          userId, // 关联用户
           title,
-          basicSummary: `${name} 的八字命理基础报告（算法版）\n\n八字：${bazi.year} ${bazi.month} ${bazi.day} ${bazi.hour}\n五行：${bazi.wuxing.dominant}旺`,
+          basicSummary: `${name} 的八字命理基础报告（算法版）\n\n八字：${baziResult.year} ${baziResult.month} ${baziResult.day} ${baziResult.hour}\n五行：${baziResult.wuxing.dominant}旺`,
           fullContent: basicReport,
           status: 'published', // 关键：立即发布
           name,
@@ -92,12 +98,13 @@ export async function POST(request: NextRequest) {
           city,
           longitude,
           latitude,
-          baziYear: bazi.year,
-          baziMonth: bazi.month,
-          baziDay: bazi.day,
-          baziHour: bazi.hour,
-          trueSolarTime: bazi.trueSolarTime || '',
-          wuxing: JSON.stringify(bazi.wuxing),
+          baziYear: baziResult.year,
+          baziMonth: baziResult.month,
+          baziDay: baziResult.day,
+          baziHour: baziResult.hour,
+          trueSolarTime: baziResult.trueSolarTime || '',
+          wuxing: JSON.stringify(baziResult.wuxing),
+          dayun: JSON.stringify(baziResult.dayun || []),
           formJson: JSON.stringify(body),
           generatedAt: new Date(), // 生成时间
         },
@@ -138,17 +145,18 @@ export async function POST(request: NextRequest) {
         const basicSummary = `您好 ${name}，
 
 您的八字为：
-年柱：${bazi.year}
-月柱：${bazi.month}
-日柱：${bazi.day}
-时柱：${bazi.hour}
+年柱：${baziResult.year}
+月柱：${baziResult.month}
+日柱：${baziResult.day}
+时柱：${baziResult.hour}
 
-五行分析：${bazi.wuxing.dominant}特征明显
+五行分析：${baziResult.wuxing.dominant}特征明显
 
 报告待激活，请确认信息后激活。`;
 
         const report = await prisma.report.create({
           data: {
+            userId, // 关联用户
             title,
             basicSummary,
             fullContent,
@@ -161,15 +169,16 @@ export async function POST(request: NextRequest) {
             city,
             longitude,
             latitude,
-            baziYear: bazi.year,
-            baziMonth: bazi.month,
-            baziDay: bazi.day,
-            baziHour: bazi.hour,
-            trueSolarTime: bazi.trueSolarTime || '',
-            wuxing: JSON.stringify(bazi.wuxing),
-            formJson: JSON.stringify(body),
-          },
-        });
+          baziYear: baziResult.year,
+          baziMonth: baziResult.month,
+          baziDay: baziResult.day,
+          baziHour: baziResult.hour,
+          trueSolarTime: baziResult.trueSolarTime || '',
+          wuxing: JSON.stringify(baziResult.wuxing),
+          dayun: JSON.stringify(baziResult.dayun || []),
+          formJson: JSON.stringify(body),
+        },
+      });
 
         console.log(`📝 [AI模式 + 有码] 报告已创建 ID: ${report.id}, 等待激活`);
 
@@ -183,12 +192,6 @@ export async function POST(request: NextRequest) {
         // 无兑换码：立即生成算法报告
         console.log('🔧 [AI模式 + 无码] 降级为算法报告...');
 
-        // 执行十神计算
-        const shishen = calculateShishen(bazi);
-
-        // 执行藏干计算
-        const canggan = calculateCanggan(bazi);
-
         // 生成基础报告
         const basicReport = generateBasicReport({
           reportId: crypto.randomUUID(),
@@ -197,17 +200,18 @@ export async function POST(request: NextRequest) {
           birthDate,
           birthTime,
           location: city,
-          bazi,
-          shishen,
-          canggan,
+          bazi: baziResult,
+          shishen: baziResult.shishen,
+          canggan: baziResult.canggan,
           birthYear,
         });
 
         // 创建报告（立即发布）
         const report = await prisma.report.create({
           data: {
+            userId, // 关联用户
             title,
-            basicSummary: `${name} 的八字命理基础报告（算法版）\n\n八字：${bazi.year} ${bazi.month} ${bazi.day} ${bazi.hour}\n五行：${bazi.wuxing.dominant}旺`,
+            basicSummary: `${name} 的八字命理基础报告（算法版）\n\n八字：${baziResult.year} ${baziResult.month} ${baziResult.day} ${baziResult.hour}\n五行：${baziResult.wuxing.dominant}旺`,
             fullContent: basicReport,
             status: 'published', // 关键：立即发布
             name,
@@ -218,12 +222,13 @@ export async function POST(request: NextRequest) {
             city,
             longitude,
             latitude,
-            baziYear: bazi.year,
-            baziMonth: bazi.month,
-            baziDay: bazi.day,
-            baziHour: bazi.hour,
-            trueSolarTime: bazi.trueSolarTime || '',
-            wuxing: JSON.stringify(bazi.wuxing),
+            baziYear: baziResult.year,
+            baziMonth: baziResult.month,
+            baziDay: baziResult.day,
+            baziHour: baziResult.hour,
+            trueSolarTime: baziResult.trueSolarTime || '',
+            wuxing: JSON.stringify(baziResult.wuxing),
+            dayun: JSON.stringify(baziResult.dayun || []),
             formJson: JSON.stringify(body),
             generatedAt: new Date(), // 生成时间
           },
@@ -245,11 +250,18 @@ export async function POST(request: NextRequest) {
 }
 
 // GET - Get all reports
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    // 如果有 userId,只返回该用户的报告(小程序端)
+    // 如果没有 userId,返回所有报告(管理端)
     const reports = await prisma.report.findMany({
+      where: userId ? { userId } : {}, // 有userId时过滤,没有时返回全部
       select: {
         id: true,
+        userId: true, // 管理端需要看到用户ID
         name: true,
         gender: true,
         birthDate: true,

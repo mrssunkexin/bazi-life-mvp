@@ -24,8 +24,38 @@ export async function POST(request: NextRequest) {
     const wxApiUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${WECHAT_APPID}&secret=${WECHAT_SECRET}&js_code=${code}&grant_type=authorization_code`;
 
     console.log('🔐 调用微信登录API...');
-    const wxResponse = await fetch(wxApiUrl);
-    const wxData = await wxResponse.json();
+    console.log('📡 请求URL:', wxApiUrl.replace(WECHAT_SECRET, '***'));
+
+    let wxResponse;
+    let wxData;
+
+    try {
+      wxResponse = await fetch(wxApiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📥 微信API响应状态:', wxResponse.status, wxResponse.statusText);
+
+      wxData = await wxResponse.json();
+      console.log('📦 微信API响应数据:', wxData);
+
+    } catch (fetchError: any) {
+      console.error('❌ 网络请求失败:', fetchError);
+      console.error('❌ 错误详情:', {
+        message: fetchError.message,
+        cause: fetchError.cause,
+        stack: fetchError.stack?.split('\n').slice(0, 3)
+      });
+
+      return errorResponse(
+        '网络连接失败，云托管服务无法访问微信API。请检查服务配置或联系管理员。',
+        ErrorCodes.SERVER_ERROR,
+        500
+      );
+    }
 
     // 检查微信API返回
     if (wxData.errcode) {

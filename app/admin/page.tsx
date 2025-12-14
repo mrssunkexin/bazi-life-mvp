@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 interface Report {
   id: string;
+  reportType?: 'basic' | 'fortune2026';
   name: string;
   gender: string;
   birthDate: string;
@@ -18,6 +19,7 @@ interface Report {
   baziDay: string;
   baziHour: string;
   fullContent: string;  // 新增：用于判断状态
+  buttonText?: string;
 }
 
 export default function AdminHomePage() {
@@ -50,12 +52,23 @@ export default function AdminHomePage() {
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/reports');
+      const response = await fetch('/api/reports/mixed');
       if (!response.ok) throw new Error('获取报告列表失败');
       const result = await response.json();
-      const data = result.data || result;
-      setReports(Array.isArray(data) ? data : []);
-      setFilteredReports(Array.isArray(data) ? data : []);
+
+      // API返回格式: { success: true, data: { reports: [...], summary: {...} } }
+      const reportsData = result.data?.reports || result.data || result;
+      const reportsList = Array.isArray(reportsData) ? reportsData : [];
+
+      const normalized = reportsList.map((r: Report) => ({
+        ...r,
+        reportType: r.reportType || 'basic',
+      }));
+
+      setReports(normalized);
+      setFilteredReports(normalized);
+
+      console.log(`✅ 加载了 ${normalized.length} 条报告`);
     } catch (error) {
       console.error('错误:', error);
       alert('加载报告列表失败');
@@ -268,24 +281,31 @@ export default function AdminHomePage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">编号</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">姓名</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">性别</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">出生日期</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">城市</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">八字</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">报告类型</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">生成时间</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">发布时间</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">生成时间</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">发布时间</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky right-0 bg-gray-50">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredReports.map((report) => {
+                  {filteredReports.map((report, index) => {
                     const actualStatus = getReportStatus(report);
                     return (
                       <tr key={report.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-3 text-xs text-gray-500 font-mono">
+                          <div className="w-20 truncate" title={report.id}>
+                            {report.id.substring(0, 8)}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {report.name}
                         </td>
@@ -301,6 +321,13 @@ export default function AdminHomePage() {
                         <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-600">
                           {report.baziYear} {report.baziMonth}<br/>
                           {report.baziDay} {report.baziHour}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-semibold">
+                            {report.reportType === 'fortune2026'
+                              ? (report.buttonText || '2026运势分析')
+                              : (report.buttonText || '五行分析')}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {report.fullContent && report.fullContent !== '待激活' && report.fullContent !== '报告生成中...' && report.fullContent.includes('纯算法解读') ? (
@@ -332,54 +359,69 @@ export default function AdminHomePage() {
                               : '待激活'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
-                          {new Date(report.createdAt).toLocaleString('zh-CN', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
-                          })}
+                        <td className="px-4 py-3 text-xs text-gray-600 font-mono">
+                          <div className="max-w-[140px]">
+                            {new Date(report.createdAt).toLocaleString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false
+                            })}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                        <td className="px-4 py-3 text-xs text-gray-600 font-mono">
                           {report.generatedAt ? (
-                            new Date(report.generatedAt).toLocaleString('zh-CN', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit',
-                              hour12: false
-                            })
+                            <div className="max-w-[140px]">
+                              {new Date(report.generatedAt).toLocaleString('zh-CN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false
+                              })}
+                            </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                        <td className="px-4 py-3 text-xs text-gray-600 font-mono">
                           {report.publishAt ? (
-                            new Date(report.publishAt).toLocaleString('zh-CN', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit',
-                              hour12: false
-                            })
+                            <div className="max-w-[140px]">
+                              {new Date(report.publishAt).toLocaleString('zh-CN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false
+                              })}
+                            </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <Link
-                            href={`/admin/reports/${report.id}`}
-                            className="text-blue-600 hover:text-blue-700 font-medium"
-                          >
-                            编辑
-                          </Link>
+                      <td className="px-4 py-3 text-sm sticky right-0 bg-white">
+                          {(actualStatus === 'draft' || actualStatus === 'generating' || actualStatus === 'pending_pay') ? (
+                            <Link
+                              href={report.reportType === 'fortune2026' ? `/admin/fortune-2026/${report.id}` : `/admin/reports/${report.id}`}
+                              className="text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                              编辑
+                            </Link>
+                          ) : (
+                            <Link
+                              href={report.reportType === 'fortune2026' ? `/admin/fortune-2026/${report.id}` : `/admin/reports/${report.id}`}
+                              className="text-gray-600 hover:text-gray-700 font-medium"
+                            >
+                              查看
+                            </Link>
+                          )}
                         </td>
                       </tr>
                     );

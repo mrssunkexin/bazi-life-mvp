@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
+import { sendTemplateMessage } from '@/lib/wechat/template-message';
 
 // GET single report
 export async function GET(
@@ -12,20 +13,18 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    // 验证userId
-    if (!userId) {
-      return errorResponse('缺少用户ID', ErrorCodes.VALIDATION_ERROR, 400);
+    // 构建查询条件：如果有userId则验证归属(小程序访问)，否则允许访问任何报告(管理端访问)
+    const whereCondition: any = { id };
+    if (userId) {
+      whereCondition.userId = userId;
     }
 
     const report = await prisma.report.findFirst({
-      where: {
-        id,
-        userId // 验证报告归属
-      },
+      where: whereCondition,
     });
 
     if (!report) {
-      return errorResponse('未找到报告或无权访问', ErrorCodes.NOT_FOUND, 404);
+      return errorResponse('未找到报告', ErrorCodes.NOT_FOUND, 404);
     }
 
     return successResponse(report);
@@ -45,6 +44,17 @@ export async function PATCH(
     const body = await request.json();
     const { title, basicSummary, fullContent, status, publishAt } = body;
 
+    // 1. 查询当前报告（包含用户信息）
+    const currentReport = await prisma.report.findUnique({
+      where: { id },
+      include: { user: true }
+    });
+
+    if (!currentReport) {
+      return errorResponse('未找到报告', ErrorCodes.NOT_FOUND, 404);
+    }
+
+    // 2. 更新报告
     const report = await prisma.report.update({
       where: { id },
       data: {
@@ -55,6 +65,28 @@ export async function PATCH(
         ...(publishAt !== undefined && { publishAt: publishAt ? new Date(publishAt) : null }),
       },
     });
+
+    // 3. 检测是否需要推送消息
+    const isNewlyPublished =
+      currentReport.status === 'draft' &&
+      status === 'published' &&
+      currentReport.user?.mpOpenid &&
+      currentReport.user?.subscribeStatus;
+
+    if (isNewlyPublished) {
+      console.log('📢 触发公众号消息推送');
+
+      // 异步发送（不阻塞响应）
+      sendTemplateMessage({
+        mpOpenid: currentReport.user!.mpOpenid!,
+        reportId: report.id,
+        reportType: 'basic',
+        userName: report.name,
+        publishTime: report.publishAt || new Date()
+      }).catch(err => {
+        console.error('模板消息发送失败:', err);
+      });
+    }
 
     return successResponse(report);
   } catch (error: any) {

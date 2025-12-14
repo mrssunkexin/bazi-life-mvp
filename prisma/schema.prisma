@@ -78,9 +78,10 @@ model Report {
   // 报告内容
   title         String
   basicSummary  String    @db.Text
-  fullContent   String    @db.Text // 按模板生成的完整分析
+  fullContent   String    @db.MediumText // 按模板生成的完整分析（最大16MB）
   generatedAt   DateTime? // AI生成完成时间
   publishAt     DateTime? // 发布时间
+  buttonText    String    @default("五行分析") // 提交按钮文字
 
   // 券码关联
   voucher       Voucher?
@@ -88,8 +89,41 @@ model Report {
   // 原始表单数据（保留兼容）
   formJson      String    @db.Text
 
+  // 生成日志关联
+  generationLogs GenerationLog[]
+
   @@index([userId])
   @@index([createdAt])
+}
+
+// AI生成日志表
+model GenerationLog {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联报告
+  reportId      String
+  report        Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  // 生成阶段
+  stage         String    // 当前阶段: "算法分析", "AI生成-性格分析", "AI生成-事业运势", 等
+  status        String    // 状态: "pending", "processing", "completed", "failed"
+
+  // 时间记录
+  startTime     DateTime?
+  endTime       DateTime?
+  duration      Int?      // 持续时间（秒）
+
+  // 错误信息
+  errorMessage  String?   @db.Text
+
+  // 额外数据（JSON格式）
+  metadata      String?   @db.Text // 如token数、API provider等
+
+  @@index([reportId])
+  @@index([createdAt])
+  @@index([status])
 }
 
 // 配置表
@@ -139,13 +173,14 @@ model Fortune2026Report {
   // 报告内容
   title         String
   basicSummary  String    @db.Text
-  fullContent   String    @db.Text
+  fullContent   String    @db.MediumText // 按模板生成的完整分析（最大16MB）
 
   // 2026运势扩展字段(JSON预留)
   fortune2026Data String  @db.Text
 
   generatedAt   DateTime? // AI生成完成时间
   publishAt     DateTime? // 发布时间
+  buttonText    String    @default("2026运势分析") // 提交按钮文字
 
   // 券码关联
   voucher       Voucher?
@@ -153,6 +188,52 @@ model Fortune2026Report {
   // 原始表单数据
   formJson      String    @db.Text
 
+  // 生成日志关联
+  generationLogs Fortune2026GenerationLog[]
+
   @@index([userId])
   @@index([createdAt])
+}
+
+// 2026运势AI生成日志表
+model Fortune2026GenerationLog {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联报告
+  reportId      String
+  report        Fortune2026Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  // 生成阶段
+  stage         String    // 当前阶段
+  status        String    // 状态: "pending", "processing", "completed", "failed"
+
+  // 时间记录
+  startTime     DateTime?
+  endTime       DateTime?
+  duration      Int?      // 持续时间（秒）
+
+  // 错误信息
+  errorMessage  String?   @db.Text
+
+  // 额外数据（JSON格式）
+  metadata      String?   @db.Text
+
+  @@index([reportId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// 微信access_token缓存表
+model WechatAccessToken {
+  id          String   @id @default(cuid())
+  appId       String   @unique  // 公众号AppID
+  accessToken String   @db.Text // access_token值
+  expiresAt   DateTime           // 过期时间
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([appId])
+  @@index([expiresAt])
 }

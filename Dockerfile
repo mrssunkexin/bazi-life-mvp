@@ -50,4 +50,4 @@ COPY --from=builder /app/prisma ./prisma
 EXPOSE 80
 
 # 启动前先同步数据库结构，然后启动应用
-CMD ["/bin/sh", "-c", "npx prisma db push && npm start"]
+CMD ["/bin/sh", "-c", "npx prisma db push --accept-data-loss && npm start"]

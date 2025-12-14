@@ -12,7 +12,6 @@ interface Report {
   publishAt: string | null;
   createdAt: string;
   updatedAt: string;
-  // 新增字段
   name?: string;
   gender?: string;
   birthDate?: string;
@@ -23,9 +22,10 @@ interface Report {
   baziDay?: string;
   baziHour?: string;
   trueSolarTime?: string;
+  generatedAt?: string | null;
 }
 
-export default function AdminReportPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AdminFortune2026ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -39,23 +39,16 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   // Parse content into sections
   const parseContentIntoSections = (content: string): string[] => {
     if (!content) return [''];
-    // Split by ## headers to create sections
     const parts = content.split(/(?=^## )/gm).filter(Boolean);
     return parts.length > 0 ? parts : [content];
   };
 
-  // Merge sections back into full content
-  const mergeSectionsIntoContent = (secs: string[]): string => {
-    return secs.join('\n\n');
-  };
+  const mergeSectionsIntoContent = (secs: string[]): string => secs.join('\n\n');
 
-  // Update specific section
   const updateSection = (index: number, value: string) => {
     const newSections = [...sections];
     newSections[index] = value;
     setSections(newSections);
-
-    // Update the report's fullContent
     if (report) {
       setReport({
         ...report,
@@ -65,7 +58,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   };
 
   useEffect(() => {
-    // Check if already authenticated in session
     const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
     if (isAuth) {
       setAuthenticated(true);
@@ -80,7 +72,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple password check - in production, use proper auth
     if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || password === 'admin123') {
       setAuthenticated(true);
       sessionStorage.setItem('admin_authenticated', 'true');
@@ -92,17 +83,16 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/reports/${id}`);
+      const response = await fetch(`/api/fortune-2026/${id}`);
       if (!response.ok) throw new Error('获取报告失败');
       const result = await response.json();
       const data = result.data || result;
       setReport(data);
-      // Parse content into sections
       setSections(parseContentIntoSections(data.fullContent || ''));
 
-      // 获取生成日志
+      // logs
       try {
-        const logsResponse = await fetch(`/api/reports/${id}/generation-logs`);
+        const logsResponse = await fetch(`/api/fortune-2026/${id}/generation-logs`);
         if (logsResponse.ok) {
           const logsResult = await logsResponse.json();
           setGenerationLogs(logsResult.data?.logs || []);
@@ -121,9 +111,8 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   const handleSave = async () => {
     if (!report) return;
     setSaving(true);
-
     try {
-      const response = await fetch(`/api/reports/${id}`, {
+      const response = await fetch(`/api/fortune-2026/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,11 +123,9 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
           publishAt: report.publishAt,
         }),
       });
-
       if (!response.ok) throw new Error('保存报告失败');
-
       alert('报告保存成功！');
-      await fetchReport(); // Refresh data
+      await fetchReport();
     } catch (error) {
       console.error('错误:', error);
       alert('保存报告失败');
@@ -150,9 +137,8 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   const handlePublish = async () => {
     if (!report) return;
     const publishNow = new Date().toISOString();
-
     try {
-      const response = await fetch(`/api/reports/${id}`, {
+      const response = await fetch(`/api/fortune-2026/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -160,9 +146,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
           publishAt: publishNow,
         }),
       });
-
       if (!response.ok) throw new Error('发布报告失败');
-
       alert('报告发布成功！');
       await fetchReport();
     } catch (error) {
@@ -174,14 +158,11 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
   const handleRegenerate = async () => {
     if (!report) return;
     if (!confirm('确定要重新生成此报告吗？这将覆盖现有内容。')) return;
-
     try {
-      const response = await fetch(`/api/reports/${id}/regenerate`, {
+      const response = await fetch(`/api/fortune-2026/${id}/regenerate`, {
         method: 'POST',
       });
-
       if (!response.ok) throw new Error('重新生成失败');
-
       alert('报告正在重新生成中...');
       await fetchReport();
     } catch (error) {
@@ -190,7 +171,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // Password gate
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center p-6">
@@ -221,7 +201,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
@@ -230,7 +209,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // No report found
   if (!report) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
@@ -239,11 +217,20 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // Admin editor
+  const actualStatus = (() => {
+    if (report.fullContent === '待激活') return 'pending_pay';
+    if (report.fullContent === '报告生成中...') return 'generating';
+    if (report.status === 'draft' &&
+      report.fullContent !== '待激活' &&
+      report.fullContent !== '报告生成中...') {
+      return 'draft';
+    }
+    return report.status;
+  })();
+
   return (
     <div className="min-h-screen bg-[#fafafa] p-6">
       <div className="max-w-[1600px] mx-auto">
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -253,15 +240,25 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
               >
                 ← 返回报告列表
               </button>
-              <h1 className="text-2xl font-medium text-gray-900">编辑报告</h1>
+              <h1 className="text-2xl font-medium text-gray-900">编辑 2026 运势报告</h1>
             </div>
             <div className="flex items-center gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                report.status === 'published'
+                actualStatus === 'published'
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-yellow-100 text-yellow-700'
+                  : actualStatus === 'generating'
+                  ? 'bg-blue-100 text-blue-700'
+                  : actualStatus === 'draft'
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
               }`}>
-                {report.status === 'published' ? '已发布' : '草稿'}
+                {actualStatus === 'published'
+                  ? '已发布'
+                  : actualStatus === 'generating'
+                  ? '生成中'
+                  : actualStatus === 'draft'
+                  ? '草稿'
+                  : '待激活'}
               </span>
               {generationLogs.length > 0 && (
                 <button
@@ -273,7 +270,7 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
               )}
               {(report.fullContent === '报告生成中...' ||
                 report.fullContent === '待激活' ||
-                report.fullContent?.includes('报告生成失败') ||
+                report.fullContent?.includes('生成失败') ||
                 report.fullContent?.includes('错误类型') ||
                 report.fullContent?.includes('错误信息')) && (
                 <button
@@ -302,12 +299,11 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Generation Logs Panel */}
         {showLogs && generationLogs.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">🔍 生成日志</h2>
             <div className="space-y-2">
-              {generationLogs.map((log, index) => {
+              {generationLogs.map((log) => {
                 const statusColor =
                   log.status === 'completed' ? 'text-green-600 bg-green-50' :
                   log.status === 'failed' ? 'text-red-600 bg-red-50' :
@@ -347,11 +343,8 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Two-column Layout: Editor + Preview */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
           <div className="space-y-6">
-            {/* 八字信息显示（只读） */}
             {report.baziYear && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
@@ -408,7 +401,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 标题
@@ -421,7 +413,6 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
               />
             </div>
 
-            {/* Basic Summary */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 基础摘要
@@ -434,78 +425,39 @@ export default function AdminReportPage({ params }: { params: Promise<{ id: stri
               />
             </div>
 
-            {/* Modular Content Sections */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">📝</span>
-                <label className="text-sm font-bold text-gray-700">
-                  内容模块 <span className="text-xs font-normal text-gray-500">(支持 Markdown)</span>
-                </label>
+                <h3 className="text-sm font-bold text-gray-900">报告正文</h3>
               </div>
               <div className="space-y-3">
-                {sections.map((section, index) => (
-                  <div key={index} className="group bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                        <span className="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                          {index + 1}
-                        </span>
-                        {section.match(/^## (.+)/m) && (
-                          <span className="text-indigo-600">
-                            {section.match(/^## (.+)/m)![1]}
-                          </span>
-                        )}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium">
-                          {section.length} 字符
-                        </span>
-                        <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
-                          {section.split('\n').length} 行
-                        </span>
-                      </div>
-                    </div>
+                {sections.map((section, idx) => (
+                  <div key={idx}>
+                    <label className="block text-xs text-gray-500 mb-1">段落 {idx + 1}</label>
                     <textarea
                       value={section}
-                      onChange={(e) => updateSection(index, e.target.value)}
-                      rows={Math.min(Math.max(section.split('\n').length, 6), 15)}
-                      className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-300 outline-none transition font-mono text-xs leading-relaxed bg-gray-50 group-hover:bg-white"
-                      placeholder="输入内容..."
+                      onChange={(e) => updateSection(idx, e.target.value)}
+                      rows={10}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-mono text-sm"
                     />
                   </div>
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Metadata */}
-            <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <div className="text-gray-500">创建时间</div>
-                  <div className="text-gray-700 mt-1">
-                    {new Date(report.createdAt).toLocaleString('zh-CN')}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500">更新时间</div>
-                  <div className="text-gray-700 mt-1">
-                    {new Date(report.updatedAt).toLocaleString('zh-CN')}
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <ReportPreview
+                title={report.title}
+                content={report.fullContent}
+                status={report.status}
+                createdAt={report.createdAt}
+                generatedAt={report.generatedAt || undefined}
+                publishAt={report.publishAt || undefined}
+              />
             </div>
           </div>
-
-          {/* Right Column: Preview */}
-          <div>
-            <ReportPreview content={report.fullContent} title={report.title} />
-          </div>
-        </div>
-
-        <div className="mt-6 text-center">
-          <a href="/admin" className="text-sm text-gray-500 hover:text-gray-700 transition">
-            ← 返回管理后台
-          </a>
         </div>
       </div>
     </div>

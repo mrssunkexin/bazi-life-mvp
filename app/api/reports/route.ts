@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       longitude,
       latitude,
       voucherCode, // 新增：兑换码（可选）
+      buttonText, // 新增：提交按钮文字
     } = body;
 
     // 验证userId
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
           dayun: JSON.stringify(baziResult.dayun || []),
           formJson: JSON.stringify(body),
           generatedAt: new Date(), // 生成时间
+          buttonText: buttonText || '五行分析', // 保存按钮文字
         },
       });
 
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
           console.log(`✅ 兑换码有效: ${voucherCode}`);
         }
 
-        // 有兑换码：创建"待激活"报告（保持现有逻辑）
+        // 兑换码有效：创建"待激活"报告
         const fullContent = '待激活';
         const basicSummary = `您好 ${name}，
 
@@ -177,6 +179,7 @@ export async function POST(request: NextRequest) {
           wuxing: JSON.stringify(baziResult.wuxing),
           dayun: JSON.stringify(baziResult.dayun || []),
           formJson: JSON.stringify(body),
+          buttonText: buttonText || '五行分析', // 保存按钮文字
         },
       });
 
@@ -231,6 +234,7 @@ export async function POST(request: NextRequest) {
             dayun: JSON.stringify(baziResult.dayun || []),
             formJson: JSON.stringify(body),
             generatedAt: new Date(), // 生成时间
+            buttonText: buttonText || '五行分析', // 保存按钮文字
           },
         });
 
@@ -276,6 +280,7 @@ export async function GET(request: NextRequest) {
         fullContent: true, // 需要返回 fullContent 以判断生成中/待激活状态
         generatedAt: true, // AI生成完成时间
         publishAt: true, // 发布时间
+        buttonText: true, // 按钮文字
         // 不返回 basicSummary, wuxing, dayun 等其他大字段
       },
       orderBy: { createdAt: 'desc' },

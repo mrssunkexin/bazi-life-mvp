@@ -337,24 +337,64 @@ export async function generateFullReport(
     '大运分析',
     '流年预测',
     '综合建议',
-  ]
+  ],
+  reportType?: 'basic' | 'fortune2026',
+  reportId?: string
 ): Promise<Record<ReportSection, string>> {
   const result: Partial<Record<ReportSection, string>> = {};
 
+  // 动态导入 generation-logger（避免循环依赖）
+  const logger = reportType && reportId ? await import('./generation-logger') : null;
+
   // 串行生成（避免并发限流）
-  for (const section of sections) {
-    console.log(`正在生成章节: ${section}...`);
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    const stage = `AI生成-${section}`;
 
-    const content = await generateSection(
-      {
-        section,
-        context,
-        length: 'medium', // 默认中等长度
-      },
-      config
-    );
+    console.log(`[${i + 1}/${sections.length}] 正在生成章节: ${section}...`);
 
-    result[section] = content;
+    // 创建并开始日志
+    let logId: string | undefined;
+    if (logger && reportId) {
+      logId = await logger.createGenerationLog(reportId, stage as any, reportType!);
+      await logger.markLogProcessing(logId, reportType!);
+    }
+
+    const startTime = Date.now();
+
+    try {
+      const content = await generateSection(
+        {
+          section,
+          context,
+          length: 'medium', // 默认中等长度
+        },
+        config
+      );
+
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      console.log(`✅ ${section} 完成 (耗时: ${duration}秒)`);
+
+      result[section] = content;
+
+      // 完成日志
+      if (logger && logId) {
+        await logger.completeGenerationLog(logId, {
+          duration,
+          section,
+        }, reportType!);
+      }
+    } catch (error) {
+      // 记录失败
+      if (logger && logId) {
+        await logger.failGenerationLog(
+          logId,
+          error instanceof Error ? error.message : String(error),
+          reportType!
+        );
+      }
+      throw error;
+    }
 
     // 避免频率限制，间隔1秒
     await new Promise((resolve) => setTimeout(resolve, 1000));

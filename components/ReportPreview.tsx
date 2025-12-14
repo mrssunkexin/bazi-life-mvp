@@ -11,6 +11,11 @@ interface ReportPreviewProps {
 export default function ReportPreview({ content, title }: ReportPreviewProps) {
   const [mode, setMode] = useState<'web' | 'mobile'>('web');
 
+  // 检测是否是错误内容
+  const isError = content?.includes('报告生成失败') || content?.includes('错误类型') || content?.includes('错误信息');
+  const isWaitingActivation = content === '待激活';
+  const isGenerating = content === '报告生成中...';
+
   return (
     <div className="sticky top-4 h-[calc(100vh-2rem)] flex flex-col">
       {/* 切换按钮 */}
@@ -54,9 +59,49 @@ export default function ReportPreview({ content, title }: ReportPreviewProps) {
 
             {/* 报告内容 */}
             <div className="p-6">
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown
-                  components={{
+              {/* 错误状态显示 */}
+              {isError && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl flex-shrink-0">⚠️</span>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-red-700 mb-3">报告生成失败</h3>
+                      <div className="bg-white rounded-lg p-4 border border-red-100">
+                        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                          {content}
+                        </pre>
+                      </div>
+                      <p className="text-sm text-red-600 mt-4">
+                        💡 建议：检查服务器日志以获取更多信息，或尝试重新生成报告
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 待激活状态 */}
+              {isWaitingActivation && (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 text-center">
+                  <span className="text-4xl">🔒</span>
+                  <h3 className="text-lg font-bold text-yellow-700 mt-3 mb-2">报告待激活</h3>
+                  <p className="text-sm text-yellow-600">请输入兑换码激活完整报告</p>
+                </div>
+              )}
+
+              {/* 生成中状态 */}
+              {isGenerating && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 text-center">
+                  <span className="text-4xl animate-pulse">⏳</span>
+                  <h3 className="text-lg font-bold text-blue-700 mt-3 mb-2">报告生成中...</h3>
+                  <p className="text-sm text-blue-600">AI 正在分析您的八字，请稍候</p>
+                </div>
+              )}
+
+              {/* 正常内容显示 */}
+              {!isError && !isWaitingActivation && !isGenerating && (
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown
+                    components={{
                     h1: ({ node, children, ...props }) => (
                       <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl shadow-lg p-6 mb-6 mt-8 first:mt-0" {...props}>
                         <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -123,11 +168,12 @@ export default function ReportPreview({ content, title }: ReportPreviewProps) {
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
                       </div>
                     ),
-                  }}
-                >
-                  {content || '*预览内容为空*'}
-                </ReactMarkdown>
-              </div>
+                    }}
+                  >
+                    {content || '*预览内容为空*'}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         </div>

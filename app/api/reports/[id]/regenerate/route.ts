@@ -1,63 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateEnhancedReport, mergeFinalReport } from '@/lib/report-generator-enhanced';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
 
-// POST - 激活报告(核销兑换码)
+// POST - 重新生成报告
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { voucherCode } = body;
+
+    console.log(`🔄 开始重新生成报告: ${id}`);
 
     // 1. 查询报告
     const report = await prisma.report.findUnique({
       where: { id },
-      include: {
-        voucher: true
-      }
     });
 
     if (!report) {
       return errorResponse('报告不存在', ErrorCodes.NOT_FOUND, 404);
     }
 
-    // 2. 检查报告是否已经激活
-    if (report.fullContent !== '待激活') {
-      return errorResponse('报告已激活,无需重复操作', ErrorCodes.VALIDATION_ERROR, 400);
+    // 2. 检查报告是否需要重新生成
+    const needsRegeneration =
+      report.fullContent === '待激活' ||
+      report.fullContent === '报告生成中...' ||
+      report.fullContent?.includes('报告生成失败') ||
+      report.fullContent?.includes('错误类型') ||
+      report.fullContent?.includes('错误信息');
+
+    if (!needsRegeneration) {
+      return errorResponse('该报告不需要重新生成', ErrorCodes.VALIDATION_ERROR, 400);
     }
 
-    // 3. 验证兑换码
-    if (!voucherCode) {
-      return errorResponse('请提供兑换码', ErrorCodes.VALIDATION_ERROR, 400);
-    }
-
-    const voucher = await prisma.voucher.findUnique({
-      where: { code: voucherCode }
-    });
-
-    if (!voucher) {
-      return errorResponse('兑换码不存在', ErrorCodes.VALIDATION_ERROR, 400);
-    }
-
-    if (voucher.isUsed) {
-      return errorResponse('兑换码已被使用', ErrorCodes.VALIDATION_ERROR, 400);
-    }
-
-    // 4. 核销兑换码(绑定到报告)
-    await prisma.voucher.update({
-      where: { id: voucher.id },
-      data: {
-        isUsed: true,
-        usedAt: new Date(),
-        reportId: report.id,
-      },
-    });
-
-    // 5. 更新报告状态为"生成中"
+    // 3. 更新报告状态为"生成中"
     await prisma.report.update({
       where: { id: report.id },
       data: {
@@ -65,11 +42,10 @@ export async function POST(
       },
     });
 
-    console.log(`✅ 兑换码 ${voucherCode} 已核销,绑定到报告 ${report.id}`);
+    console.log(`✅ 报告状态已更新为"生成中" ID: ${report.id}`);
 
-    // 6. 异步生成AI报告
+    // 4. 异步生成AI报告
     const { name, gender, birthDate, birthTime, city } = report;
-    const formJson = JSON.parse(report.formJson);
     const bazi = {
       year: report.baziYear,
       month: report.baziMonth,
@@ -125,17 +101,16 @@ export async function POST(
             fullContent,
             dayun: JSON.stringify(result.analysis.dayun.dayunList),
             generatedAt: new Date(),
-            // AI 生成完成后保持草稿，待人工发布
-            status: 'draft',
+            status: 'draft', // AI 生成完成后保持草稿，待人工发布
           },
         });
 
-        console.log(`✅ 报告生成完成 ID: ${report.id}`);
+        console.log(`✅ 报告重新生成完成 ID: ${report.id}`);
         if (result.tokenEstimate) {
           console.log(`📊 Token: ${result.tokenEstimate.totalTokens}, 成本: $${result.tokenEstimate.estimatedCost.toFixed(4)}`);
         }
       } catch (error) {
-        console.error(`❌ 异步生成报告失败 ID: ${report.id}`, error);
+        console.error(`❌ 异步重新生成报告失败 ID: ${report.id}`, error);
 
         // 构建详细的错误信息
         let errorMessage = '报告生成失败\n\n';
@@ -153,19 +128,19 @@ export async function POST(
           where: { id: report.id },
           data: {
             fullContent: errorMessage,
-            status: 'draft', // 保持草稿，方便人工处理
+            status: 'draft',
           },
         });
       }
     })();
 
     return successResponse({
-      message: '激活成功,报告生成中...',
+      message: '报告正在重新生成中...',
       reportId: report.id
     });
 
   } catch (error: any) {
-    console.error('❌ 激活报告失败:', error);
-    return errorResponse(error.message || '激活失败', ErrorCodes.SERVER_ERROR, 500);
+    console.error('❌ 重新生成报告失败:', error);
+    return errorResponse(error.message || '重新生成失败', ErrorCodes.SERVER_ERROR, 500);
   }
 }

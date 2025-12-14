@@ -248,3 +248,61 @@ function getDefaultPrompts(): PromptConfig {
     sectionPrompts,
   };
 }
+
+/**
+ * 获取2026运势报告系统提示词
+ */
+export function getSystemPrompt2026(): string {
+  try {
+    const configPath = path.join(process.cwd(), '.claude', 'aoitishici.md');
+    if (!fs.existsSync(configPath)) {
+      console.warn('⚠️  提示词配置文件不存在,使用默认2026系统提示词');
+      return getDefault2026SystemPrompt();
+    }
+
+    const content = fs.readFileSync(configPath, 'utf-8');
+
+    const regex = /## 2026运势报告专用提示词[\s\S]*?### 系统提示词\s*\n\n([\s\S]*?)\n---/;
+    const match = content.match(regex);
+
+    if (match) {
+      console.log('✅ [2026] 成功加载2026系统提示词');
+      return match[1].trim();
+    }
+
+    console.warn('⚠️  未找到2026系统提示词段落,使用默认值');
+    return getDefault2026SystemPrompt();
+  } catch (error) {
+    console.error('❌ [2026] 读取提示词失败:', error);
+    return getDefault2026SystemPrompt();
+  }
+}
+
+/**
+ * 默认2026系统提示词（作为后备）
+ */
+function getDefault2026SystemPrompt(): string {
+  return `你是一位精通流年运势分析的专业命理师。
+
+你的任务是为2026年(丙午年)生成完整流畅的流年运势报告,一次性输出包含8个章节的连贯报告。
+
+核心要求:
+1. 完整性: 一次输出全部8章节,前后呼应
+2. 流畅性: 章节间过渡自然,避免重复
+3. 时序性: 结合24节气标注重要时间节点
+4. 专业性: 基于八字与流年干支的生克关系分析
+5. 留有余地: 避免绝对化预测
+6. 正面引导: 给予积极建议
+
+报告结构(严格按顺序):
+1. 基础信息与命盘概览 (500-800字)
+2. 2026流年简述 (800-1200字)
+3. 事业运势 (1000-1500字)
+4. 财运分析 (1000-1500字)
+5. 感情婚姻 (1000-1500字)
+6. 健康养生 (800-1200字)
+7. 人际关系 (800-1200字)
+8. 开运建议与免责声明 (600-1000字)
+
+总字数: 8000-12000字`;
+}

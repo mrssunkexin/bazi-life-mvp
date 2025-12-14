@@ -9,7 +9,8 @@ import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, name, gender, birthDate, birthTime, city, longitude, latitude, voucherCode } = body;
+    const { userId, name, gender, birthDate, birthTime, city, longitude, latitude, voucherCode, buttonText } = body;
+    const autoActivate = body.autoActivate !== false; // 默认自动触发激活，除非显式关闭
 
     // 验证userId
     if (!userId) {
@@ -51,9 +52,11 @@ export async function POST(request: NextRequest) {
     const title = `${name}的2026年流年运势报告`;
     const birthYear = new Date(birthDate).getFullYear();
 
+    // 计算2026运势数据(两种模式都需要)
+    const fortune2026Data = calculate2026Fortune(baziResult, birthYear);
+
     // 算法模式: 立即生成
     if (generationMode === 'algorithm_only') {
-      const fortune2026Data = calculate2026Fortune(baziResult, birthYear);
       const fullContent = generate2026Report({
         reportId: crypto.randomUUID(),
         name,
@@ -90,7 +93,8 @@ export async function POST(request: NextRequest) {
           dayun: JSON.stringify(baziResult.dayun || []),
           fortune2026Data: JSON.stringify(fortune2026Data),
           formJson: JSON.stringify(body),
-          generatedAt: new Date()
+          generatedAt: new Date(),
+          buttonText: buttonText || '2026运势分析' // 保存按钮文字
         }
       });
 
@@ -105,9 +109,101 @@ export async function POST(request: NextRequest) {
       }, 201);
 
     } else {
-      // AI模式: 创建draft,等待激活
-      // TODO: 实现兑换码验证逻辑(参考现有Report的实现)
-      return errorResponse('AI模式暂未实现', ErrorCodes.SERVER_ERROR, 501);
+      // AI模式: 必须有兑换码
+      console.log('🤖 [AI模式] 处理2026报告创建...');
+
+      // 1. 验证兑换码必填
+      if (!voucherCode || voucherCode.trim() === '') {
+        return errorResponse('请输入兑换码', ErrorCodes.VALIDATION_ERROR, 400);
+      }
+
+      // 2. 验证兑换码有效性
+      const voucher = await prisma.voucher.findUnique({
+        where: { code: voucherCode },
+      });
+
+      if (!voucher) {
+        return errorResponse('兑换码不存在', ErrorCodes.VALIDATION_ERROR, 400);
+      }
+
+      if (voucher.isUsed) {
+        return errorResponse('兑换码已被使用', ErrorCodes.VALIDATION_ERROR, 400);
+      }
+
+      console.log(`✅ 兑换码验证通过: ${voucherCode}`);
+
+      // 3. 创建"待激活"报告
+      const report = await prisma.fortune2026Report.create({
+        data: {
+          userId,
+          title,
+          basicSummary: `${name} 的2026年运势报告待激活`,
+          fullContent: '待激活',
+          status: 'draft',
+          name,
+          gender,
+          birthDate,
+          birthTime,
+          country: '中国',
+          city,
+          longitude,
+          latitude,
+          baziYear: baziResult.year,
+          baziMonth: baziResult.month,
+          baziDay: baziResult.day,
+          baziHour: baziResult.hour,
+          trueSolarTime: baziResult.trueSolarTime || '',
+          wuxing: JSON.stringify(baziResult.wuxing),
+          dayun: JSON.stringify(baziResult.dayun || []),
+          fortune2026Data: JSON.stringify(fortune2026Data),
+          formJson: JSON.stringify(body),
+          buttonText: buttonText || '2026运势分析',
+        },
+      });
+
+      console.log(`📝 [AI] 2026报告已创建 ID: ${report.id}, 等待激活`);
+
+      // 4. 可选：自动触发激活（核销 + 生成）
+      let activationResult: { success: boolean; message: string } | null = null;
+      if (autoActivate) {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          const activateRes = await fetch(`${baseUrl}/api/fortune-2026/${report.id}/activate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voucherCode }),
+          });
+
+          const activateData = await activateRes.json();
+          const successFlag = activateRes.ok && activateData?.success !== false;
+          activationResult = {
+            success: successFlag,
+            message: activateData?.message || activateData?.error || (successFlag ? '激活请求已触发' : '激活请求失败'),
+          };
+
+          if (successFlag) {
+            console.log(`🚀 [AI] 2026报告激活已触发: ${report.id}`);
+          } else {
+            console.error(`⚠️ [AI] 2026报告激活失败: ${report.id}`, activationResult.message);
+          }
+        } catch (error: any) {
+          activationResult = {
+            success: false,
+            message: error?.message || '激活请求异常',
+          };
+          console.error('❌ [AI] 触发激活失败:', error);
+        }
+      }
+
+      return successResponse({
+        id: report.id,
+        status: 'draft',
+        voucherStatus: 'valid',
+        voucherCode,
+        message: autoActivate ? '报告已创建,正在激活生成' : '报告已创建,请激活以生成完整内容',
+        activationTriggered: autoActivate,
+        activationResult,
+      }, 201);
     }
   } catch (error: any) {
     console.error('❌ 创建2026报告失败:', error);

@@ -11,6 +11,13 @@ import { calculateGeju, getGejuMeaning } from './bazi-geju';
 import { calculateDayun, calculateLiunian, getDayunAtAge } from './bazi-dayun';
 import type { BaziContext, ReportSection } from './ai-generator';
 import { generateFullReport as generateAIReport, estimateTokens } from './ai-generator';
+import {
+  createGenerationLog,
+  markLogProcessing,
+  completeGenerationLog,
+  failGenerationLog,
+  type GenerationStage
+} from './generation-logger';
 
 export interface EnhancedReportData {
   // 基本信息
@@ -328,6 +335,7 @@ export async function generateEnhancedReport(
     model?: string;
     baseURL?: string;
     sections?: ReportSection[];
+    reportType?: 'basic' | 'fortune2026';
   } = {}
 ): Promise<{
   algorithmSummary: string;
@@ -335,51 +343,86 @@ export async function generateEnhancedReport(
   analysis: ComprehensiveAnalysis;
   tokenEstimate?: ReturnType<typeof estimateTokens>;
 }> {
-  // 1. 执行算法分析（必须）
-  const analysis = performComprehensiveAnalysis(data);
+  const reportType = options.reportType || 'basic';
 
-  // 2. 生成算法摘要
-  const algorithmSummary = generateAlgorithmSummary(analysis);
+  // 日志：开始生成
+  const startLogId = await createGenerationLog(data.reportId, '开始生成', reportType);
+  await markLogProcessing(startLogId, reportType);
 
-  // 3. 如果启用 AI，生成 AI 章节
-  let aiSections: Record<ReportSection, string> | undefined;
-  let tokenEstimate: ReturnType<typeof estimateTokens> | undefined;
+  try {
+    // 1. 执行算法分析（必须）
+    const algoLogId = await createGenerationLog(data.reportId, '算法分析', reportType);
+    await markLogProcessing(algoLogId, reportType);
 
-  if (options.useAI && options.apiKey) {
-    const context = buildAIContext(data, analysis);
+    const analysis = performComprehensiveAnalysis(data);
 
-    const sections = options.sections || [
-      '性格分析',
-      '事业运势',
-      '财运分析',
-      '婚姻感情',
-      '健康养生',
-      '人际关系',
-      '大运分析',
-      '流年预测',
-      '综合建议',
-    ];
+    await completeGenerationLog(algoLogId, undefined, reportType);
 
-    const provider = options.provider || 'deepseek';
+    // 2. 生成算法摘要
+    const summaryLogId = await createGenerationLog(data.reportId, '合并报告', reportType);
+    await markLogProcessing(summaryLogId, reportType);
 
-    // 估算 token 使用
-    tokenEstimate = estimateTokens(context, sections, provider);
+    const algorithmSummary = generateAlgorithmSummary(analysis);
 
-    // 生成 AI 内容
-    aiSections = await generateAIReport(context, {
-      apiKey: options.apiKey,
-      provider,
-      model: options.model,
-      baseURL: options.baseURL,
-    }, sections);
+    await completeGenerationLog(summaryLogId, undefined, reportType);
+
+    // 3. 如果启用 AI，生成 AI 章节
+    let aiSections: Record<ReportSection, string> | undefined;
+    let tokenEstimate: ReturnType<typeof estimateTokens> | undefined;
+
+    if (options.useAI && options.apiKey) {
+      const context = buildAIContext(data, analysis);
+
+      const sections = options.sections || [
+        '性格分析',
+        '事业运势',
+        '财运分析',
+        '婚姻感情',
+        '健康养生',
+        '人际关系',
+        '大运分析',
+        '流年预测',
+        '综合建议',
+      ];
+
+      const provider = options.provider || 'deepseek';
+
+      // 估算 token 使用
+      tokenEstimate = estimateTokens(context, sections, provider);
+
+      // 生成 AI 内容 - 带进度回调记录日志
+      aiSections = await generateAIReport(
+        context,
+        {
+          apiKey: options.apiKey,
+          provider,
+          model: options.model,
+          baseURL: options.baseURL,
+        },
+        sections,
+        reportType,
+        data.reportId
+      );
+    }
+
+    // 完成总日志
+    await completeGenerationLog(startLogId, undefined, reportType);
+
+    return {
+      algorithmSummary,
+      aiSections,
+      analysis,
+      tokenEstimate,
+    };
+  } catch (error) {
+    // 记录失败
+    await failGenerationLog(
+      startLogId,
+      error instanceof Error ? error.message : String(error),
+      reportType
+    );
+    throw error;
   }
-
-  return {
-    algorithmSummary,
-    aiSections,
-    analysis,
-    tokenEstimate,
-  };
 }
 
 /**

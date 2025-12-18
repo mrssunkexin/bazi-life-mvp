@@ -29,12 +29,46 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNotify, setShowNotify] = useState(true);
+  const [showQr, setShowQr] = useState(true);
 
   useEffect(() => {
     if (id) {
       fetchReport();
     }
   }, [id]);
+
+  useEffect(() => {
+    loadConfigs();
+  }, []);
+
+  const parseBoolean = (value: unknown, defaultValue: boolean) => {
+    if (value === undefined || value === null) return defaultValue;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const lowered = value.toLowerCase();
+      if (lowered === 'false' || lowered === '0') return false;
+      if (lowered === 'true' || lowered === '1') return true;
+    }
+    if (typeof value === 'number') return value !== 0;
+    return defaultValue;
+  };
+
+  const loadConfigs = async () => {
+    try {
+      const res = await fetch('/api/config?keys=waiting_show_notify,waiting_show_qr');
+      const data = await res.json();
+      const config = data?.data || {};
+
+      // 缺失时默认展示，保证现有行为不变
+      setShowNotify(parseBoolean(config.waiting_show_notify, true));
+      setShowQr(parseBoolean(config.waiting_show_qr, true));
+    } catch (err) {
+      console.warn('⚠️ 获取等待页配置失败，使用默认值', err);
+      setShowNotify(true);
+      setShowQr(true);
+    }
+  };
 
   const fetchReport = async () => {
     setLoading(true);
@@ -135,9 +169,31 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
             <p className="text-lg text-gray-600 mb-2">
               专业人员正在为您分析八字命理
             </p>
-            <p className="text-sm text-gray-500 mb-8">
+            <p className="text-sm text-gray-500">
               请耐心等待，我们会尽快完成分析
             </p>
+
+            {showNotify && (
+              <p className="text-sm text-blue-600 font-medium mt-4 mb-6">
+                完成后将第一时间通知您
+              </p>
+            )}
+
+            {showQr && (
+              <div className="bg-gradient-to-b from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 mb-8">
+                <div className="text-sm font-semibold text-gray-800 mb-3">
+                  关注公众号获取通知
+                </div>
+                <div className="bg-white rounded-xl shadow-inner p-4 flex flex-col items-center gap-3">
+                  <div className="w-44 h-44 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                    二维码
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    长按识别二维码关注
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
               <h2 className="text-sm font-medium text-gray-700 mb-3">报告信息</h2>

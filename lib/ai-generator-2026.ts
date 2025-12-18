@@ -57,7 +57,7 @@ export function get2026SolarTerms(): SolarTerm[] {
  * 构建2026专用用户提示词
  */
 function build2026UserPrompt(context: Fortune2026Context): string {
-  let prompt = `请为以下八字生成【2026年完整流年运势报告】,一次性输出包含8个章节的连贯内容,总字数8000-12000字。
+  let prompt = `请为以下八字生成【2026年完整流年运势报告】,严格按照案例的长度和风格。
 
 ## 基本信息
 - 姓名: ${context.name}
@@ -116,7 +116,7 @@ function build2026UserPrompt(context: Fortune2026Context): string {
     prompt += `${terms[i].name}: ${terms[i].date}  |  ${terms[i + 1].name}: ${terms[i + 1].date}\n`;
   }
 
-  prompt += `\n请严格按照提示词中定义的8个章节结构生成完整报告。务必一次性输出全部章节,内容连贯流畅,总字数8000-12000字。`;
+  prompt += `\n请严格按照提示词中定义的章节结构生成完整报告。务必一次性输出全部章节,风格和长度与案例保持一致。`;
 
   return prompt;
 }
@@ -147,8 +147,11 @@ export async function generate2026FullReport(
     const systemPrompt = getSystemPrompt2026();
     const userPrompt = build2026UserPrompt(context);
 
+    // 日志：最终传给 API 的提示词（包含系统与用户两段）
+    console.log(`以下是 2026 运势分析提示词：\n[system]\n${systemPrompt}\n[user]\n${userPrompt}`);
+
     console.log(`🚀 [2026] 开始生成完整报告 (reportId: ${reportId.substring(0, 8)})...`);
-    console.log(`📊 [2026] 预计字数: 8000-12000, Tokens: ~15000`);
+    console.log(`📊 [2026] 预计字数: 1000-3000, Tokens: ~2000-6000`);
 
     const provider = config.provider || 'deepseek';
     const maxTokens = 8192; // DeepSeek限制最大8192 tokens
@@ -257,7 +260,7 @@ export async function generate2026FullReport(
       throw new Error(`不支持的 AI 服务提供商: ${provider}`);
     }
 
-    if (fullReport.length < 5000) {
+    if (fullReport.length < 800) {
       throw new Error('AI输出字数过少,可能生成不完整');
     }
 

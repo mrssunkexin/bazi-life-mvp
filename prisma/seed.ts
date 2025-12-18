@@ -55,6 +55,20 @@ async function main() {
       type: 'boolean',
       label: '显示基础报告按钮',
       description: '控制首页是否显示基础/八字测算按钮'
+    },
+    {
+      key: 'waiting_show_notify',
+      value: 'true',
+      type: 'boolean',
+      label: '等待页显示通知提示',
+      description: '控制等待页“完成后将第一时间通知您”文案是否显示'
+    },
+    {
+      key: 'waiting_show_qr',
+      value: 'true',
+      type: 'boolean',
+      label: '等待页显示公众号二维码',
+      description: '控制等待页二维码提示卡片是否显示'
     }
   ];
 

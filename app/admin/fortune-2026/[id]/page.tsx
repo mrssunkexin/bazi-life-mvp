@@ -32,30 +32,8 @@ export default function AdminFortune2026ReportPage({ params }: { params: Promise
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [sections, setSections] = useState<string[]>([]);
   const [generationLogs, setGenerationLogs] = useState<any[]>([]);
   const [showLogs, setShowLogs] = useState(false);
-
-  // Parse content into sections
-  const parseContentIntoSections = (content: string): string[] => {
-    if (!content) return [''];
-    const parts = content.split(/(?=^## )/gm).filter(Boolean);
-    return parts.length > 0 ? parts : [content];
-  };
-
-  const mergeSectionsIntoContent = (secs: string[]): string => secs.join('\n\n');
-
-  const updateSection = (index: number, value: string) => {
-    const newSections = [...sections];
-    newSections[index] = value;
-    setSections(newSections);
-    if (report) {
-      setReport({
-        ...report,
-        fullContent: mergeSectionsIntoContent(newSections)
-      });
-    }
-  };
 
   useEffect(() => {
     const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
@@ -88,7 +66,6 @@ export default function AdminFortune2026ReportPage({ params }: { params: Promise
       const result = await response.json();
       const data = result.data || result;
       setReport(data);
-      setSections(parseContentIntoSections(data.fullContent || ''));
 
       // logs
       try {
@@ -343,8 +320,8 @@ export default function AdminFortune2026ReportPage({ params }: { params: Promise
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             {report.baziYear && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
@@ -426,28 +403,24 @@ export default function AdminFortune2026ReportPage({ params }: { params: Promise
             </div>
 
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg">📝</span>
-                <h3 className="text-sm font-bold text-gray-900">报告正文</h3>
-              </div>
-              <div className="space-y-3">
-                {sections.map((section, idx) => (
-                  <div key={idx}>
-                    <label className="block text-xs text-gray-500 mb-1">段落 {idx + 1}</label>
-                    <textarea
-                      value={section}
-                      onChange={(e) => updateSection(idx, e.target.value)}
-                      rows={10}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-mono text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                报告完整内容
+              </label>
+              <textarea
+                value={report.fullContent}
+                onChange={(e) => setReport({ ...report, fullContent: e.target.value })}
+                rows={30}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-mono text-sm resize-y"
+                placeholder="报告完整内容（支持Markdown格式）"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                💡 提示：支持Markdown格式，使用 ## 创建章节标题
+              </p>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <div className="space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 h-full">
               <ReportPreview
                 title={report.title}
                 content={report.fullContent}

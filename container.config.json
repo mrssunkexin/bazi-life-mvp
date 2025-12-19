@@ -1,0 +1,21 @@
+{
+  "containerPort": 80,
+  "minNum": 0,
+  "maxNum": 5,
+  "cpu": 0.25,
+  "mem": 0.5,
+  "policyType": "cpu",
+  "policyThreshold": 60,
+  "envParams": {},
+  "customLogs": "stdout",
+  "dataBaseName": "bazi_life",
+  "executeSQLs": [],
+  "initialDelaySeconds": 2,
+  "networkConfig": {
+    "enablePublicNetwork": true,
+    "publicNetworkWhitelist": [
+      "api.weixin.qq.com",
+      "*.weixin.qq.com"
+    ]
+  }
+}

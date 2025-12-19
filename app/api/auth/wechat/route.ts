@@ -30,12 +30,20 @@ export async function POST(request: NextRequest) {
     let wxData;
 
     try {
+      // 增加超时控制（10秒）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       wxResponse = await fetch(wxApiUrl, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       console.log('📥 微信API响应状态:', wxResponse.status, wxResponse.statusText);
 
@@ -45,13 +53,22 @@ export async function POST(request: NextRequest) {
     } catch (fetchError: any) {
       console.error('❌ 网络请求失败:', fetchError);
       console.error('❌ 错误详情:', {
+        name: fetchError.name,
         message: fetchError.message,
         cause: fetchError.cause,
-        stack: fetchError.stack?.split('\n').slice(0, 3)
+        stack: fetchError.stack?.split('\n').slice(0, 5)
       });
 
+      // 更具体的错误提示
+      let errorMessage = '微信登录失败';
+      if (fetchError.name === 'AbortError') {
+        errorMessage = '微信API请求超时，请稍后重试';
+      } else if (fetchError.message.includes('fetch')) {
+        errorMessage = '网络连接失败，请检查网络设置';
+      }
+
       return errorResponse(
-        '网络连接失败，云托管服务无法访问微信API。请检查服务配置或联系管理员。',
+        errorMessage,
         ErrorCodes.SERVER_ERROR,
         500
       );

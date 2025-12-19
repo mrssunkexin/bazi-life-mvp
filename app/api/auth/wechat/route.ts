@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, errorResponse, ErrorCodes } from '@/lib/api-response';
+import { code2Session } from '@/lib/wechat-cloud';
 
 const WECHAT_APPID = process.env.WECHAT_APPID || '';
 const WECHAT_SECRET = process.env.WECHAT_SECRET || '';
@@ -20,55 +21,15 @@ export async function POST(request: NextRequest) {
       return errorResponse('缺少code参数', ErrorCodes.VALIDATION_ERROR, 400);
     }
 
-    // 调用微信API换取openid
-    const wxApiUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${WECHAT_APPID}&secret=${WECHAT_SECRET}&js_code=${code}&grant_type=authorization_code`;
-
-    console.log('🔐 调用微信登录API...');
-    console.log('📡 请求URL:', wxApiUrl.replace(WECHAT_SECRET, '***'));
-
-    let wxResponse;
+    // 调用微信API换取openid（使用云托管内网API）
     let wxData;
 
     try {
-      // 增加超时控制（10秒）
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      wxResponse = await fetch(wxApiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0'
-        },
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('📥 微信API响应状态:', wxResponse.status, wxResponse.statusText);
-
-      wxData = await wxResponse.json();
-      console.log('📦 微信API响应数据:', wxData);
-
-    } catch (fetchError: any) {
-      console.error('❌ 网络请求失败:', fetchError);
-      console.error('❌ 错误详情:', {
-        name: fetchError.name,
-        message: fetchError.message,
-        cause: fetchError.cause,
-        stack: fetchError.stack?.split('\n').slice(0, 5)
-      });
-
-      // 更具体的错误提示
-      let errorMessage = '微信登录失败';
-      if (fetchError.name === 'AbortError') {
-        errorMessage = '微信API请求超时，请稍后重试';
-      } else if (fetchError.message.includes('fetch')) {
-        errorMessage = '网络连接失败，请检查网络设置';
-      }
-
+      wxData = await code2Session(code, WECHAT_APPID, WECHAT_SECRET);
+    } catch (error: any) {
+      console.error('❌ 微信登录失败:', error);
       return errorResponse(
-        errorMessage,
+        error.message || '微信登录失败',
         ErrorCodes.SERVER_ERROR,
         500
       );
@@ -84,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { openid, unionid, session_key } = wxData;
+    const { openid, unionid } = wxData;
 
     if (!openid) {
       return errorResponse('获取openid失败', ErrorCodes.SERVER_ERROR, 500);

@@ -31,22 +31,19 @@ export function generateBasicReport(data: BasicReportData): string {
   // 五行分析
   const wuxing = bazi.wuxing;
 
-  return `# 🌙 八字命理基础报告（算法版）
+  return `# 🌙 生辰五行查询
 
-> 报告编号：${data.reportId.slice(0, 12).toUpperCase()}
+> 编号：${data.reportId.slice(0, 12).toUpperCase()}
 > 姓名：${name}
 > 性别：${gender}
 > 出生时间：${birthDate} ${birthTime}
 > 出生地：${location}
 > 生成日期：${today}
-> 生成模式：纯算法解读
+> 生成模式：查询五行
 ${bazi.trueSolarTime ? `> 真太阳时：${bazi.trueSolarTime}\n` : ''}
----
 
-## 📊 第1页：命盘总览
-
-### 四柱八字
-
+## 📊 生辰算法查询
+### 生辰四柱
 | 柱位 | 干支 | 纳音 |
 |------|------|------|
 | **年柱** | ${bazi.year} | ${bazi.naYin.year} |
@@ -56,129 +53,55 @@ ${bazi.trueSolarTime ? `> 真太阳时：${bazi.trueSolarTime}\n` : ''}
 
 **日主**：${bazi.dayGan}（本命元神）
 
-### 五行比例分析
-
+### 五行数量查询和比例计算
 | 木 | 火 | 土 | 金 | 水 |
 |:---:|:---:|:---:|:---:|:---:|
 | ${wuxing.wood}% | ${wuxing.fire}% | ${wuxing.earth}% | ${wuxing.metal}% | ${wuxing.water}% |
 
-**五行特征**：
-- **主导元素**：${wuxing.dominant}（占比最高，影响性格基调）
-  - ${getWuxingMeaning(wuxing.dominant)}
-
-- **弱势元素**：${wuxing.weak}（需要注意补足）
-  - ${getWuxingWeakSuggestion(wuxing.weak)}
-
----
-
-## 🎭 第2页：十神分析
-
-十神是八字命理的核心，揭示命主与周围人事物的互动关系。
-
-### 天干十神配置
-
+## 🎭 十神查询
+### 天干十神查询
 | 位置 | 天干 | 十神 | 含义 |
-|------|------|------|------|
-| **年干** | ${bazi.yearGan} | ${shishen.天干.年干 || '-'} | ${shishen.天干.年干 ? SHISHEN_MEANINGS[shishen.天干.年干].description : '-'} |
-| **月干** | ${bazi.monthGan} | ${shishen.天干.月干 || '-'} | ${shishen.天干.月干 ? SHISHEN_MEANINGS[shishen.天干.月干].description : '-'} |
-| **日干** | ${bazi.dayGan} | 【日主】 | 本命元神，不论十神 |
-| **时干** | ${bazi.hourGan} | ${shishen.天干.时干 || '-'} | ${shishen.天干.时干 ? SHISHEN_MEANINGS[shishen.天干.时干].description : '-'} |
+| **年干** | ${bazi.yearGan} | ${shishen.天干.年干 || '-'} | 
+| **月干** | ${bazi.monthGan} | ${shishen.天干.月干 || '-'} | 
+| **日干** | ${bazi.dayGan} | 【日主】 | 
+| **时干** | ${bazi.hourGan} | ${shishen.天干.时干 || '-'} | 
 
-### 地支十神配置
-
+### 地支十神查询
 | 位置 | 地支 | 本气十神 | 含义 |
-|------|------|----------|------|
-| **年支** | ${bazi.yearZhi} | ${shishen.地支.年支 || '-'} | ${shishen.地支.年支 ? SHISHEN_MEANINGS[shishen.地支.年支].description : '-'} |
-| **月支** | ${bazi.monthZhi} | ${shishen.地支.月支 || '-'} | ${shishen.地支.月支 ? SHISHEN_MEANINGS[shishen.地支.月支].description : '-'} |
-| **日支** | ${bazi.dayZhi} | ${shishen.地支.日支 || '-'} | ${shishen.地支.日支 ? SHISHEN_MEANINGS[shishen.地支.日支].description : '-'} |
-| **时支** | ${bazi.hourZhi} | ${shishen.地支.时支 || '-'} | ${shishen.地支.时支 ? SHISHEN_MEANINGS[shishen.地支.时支].description : '-'} |
+| **年支** | ${bazi.yearZhi} | ${shishen.地支.年支 || '-'} | 
+| **月支** | ${bazi.monthZhi} | ${shishen.地支.月支 || '-'} | 
+| **日支** | ${bazi.dayZhi} | ${shishen.地支.日支 || '-'} | 
+| **时支** | ${bazi.hourZhi} | ${shishen.地支.时支 || '-'} | 
 
-### 十神统计与特征
-
-${generateShishenStatistics(shishen)}
-
-### 主要十神深度解读
-
-${generateTopShishenAnalysis(shishen)}
-
----
-
-## 🌿 第3页：藏干分析
-
-地支藏干揭示了命盘的深层力量结构。藏干是地支所藏的天干，影响五行力量的实际分布。
-
-### 四柱藏干详解
-
+## 🌿 藏干查询
+### 四柱藏干查询
 ${generateCangganDetails(canggan, bazi)}
-
-### 透干分析
-
-透干是指天干与地支藏干相同，形成"天地呼应"，力量加倍。
-
-${generateTouganAnalysis(canggan)}
-
-### 五行实际力量（含藏干）
-
-考虑藏干后的五行力量分布：
+### 五行数量查询（含藏干）
 
 | 木 | 火 | 土 | 金 | 水 |
 |:---:|:---:|:---:|:---:|:---:|
 | ${Math.round(canggan.wuxingStrength['木'] * 100 / getTotalStrength(canggan))}% | ${Math.round(canggan.wuxingStrength['火'] * 100 / getTotalStrength(canggan))}% | ${Math.round(canggan.wuxingStrength['土'] * 100 / getTotalStrength(canggan))}% | ${Math.round(canggan.wuxingStrength['金'] * 100 / getTotalStrength(canggan))}% | ${Math.round(canggan.wuxingStrength['水'] * 100 / getTotalStrength(canggan))}% |
 
----
-
-## 🎵 第4页：纳音分析
-
-纳音是六十甲子的五行属性，用于分析命局的整体格调和生命质感。
-
-### 四柱纳音
-
+## 🎵 纳音查询
+### 纳音古代含义查询
 - **年柱纳音**：${bazi.naYin.year}
   - ${getNayinMeaning(bazi.naYin.year)}
-
 - **月柱纳音**：${bazi.naYin.month}
   - ${getNayinMeaning(bazi.naYin.month)}
-
 - **日柱纳音**：${bazi.naYin.day}（本命纳音，最重要）
   - ${getNayinMeaning(bazi.naYin.day)}
-
 - **时柱纳音**：${bazi.naYin.hour}
   - ${getNayinMeaning(bazi.naYin.hour)}
 
-### 纳音特征总结
+## 📝 查询结果说明
+本查询基于传统算法生成，包含以下内容：
 
-本命纳音为 **${bazi.naYin.day}**，代表您的生命质感与能量特质。
+- 五行比例查询
+- 十神查询
+- 地支藏干查询
+- 纳音五行查询
 
-${getNayinSummary(bazi.naYin.day)}
-
----
-
-## 📝 报告说明
-
-### 关于本报告
-
-本报告基于传统八字命理算法生成，包含以下内容：
-
-✅ **已包含**：
-- 四柱八字排盘
-- 五行比例分析
-- 十神配置与解读
-- 地支藏干分析
-- 纳音五行分析
-
-❌ **未包含**：
-- 格局判断（正格、变格等）
-- 神煞分析（桃花、文昌等）
-- 大运流年推算
-- AI深度个性化解读
-
----
-
-> 本报告仅供参考，不构成任何专业建议。
-> 命理学是一门统计与经验的学问，请理性看待。
-> 人生由自己掌握，报告只是一面镜子。
-
----
+> 本查询仅供参考，不构成任何专业建议。
 
 **报告生成时间**：${new Date().toLocaleString('zh-CN')}
 `;

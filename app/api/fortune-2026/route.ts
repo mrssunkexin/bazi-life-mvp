@@ -167,7 +167,9 @@ export async function POST(request: NextRequest) {
       let activationResult: { success: boolean; message: string } | null = null;
       if (autoActivate) {
         try {
+          // 优先使用环境变量，生产环境应配置为 https://www.dralexlp.com
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          console.log(`[激活调用] 使用URL: ${baseUrl}/api/fortune-2026/${report.id}/activate`);
           const activateRes = await fetch(`${baseUrl}/api/fortune-2026/${report.id}/activate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

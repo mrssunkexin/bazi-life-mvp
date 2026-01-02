@@ -69,6 +69,20 @@ async function main() {
       type: 'boolean',
       label: '等待页显示公众号二维码',
       description: '控制等待页二维码提示卡片是否显示'
+    },
+    {
+      key: 'show_fortune_page',
+      value: 'false',
+      type: 'boolean',
+      label: '运势页面',
+      description: '控制运势页面（五行查询）是否显示。选择"true"时显示完整功能，选择"false"时仅显示提示文案'
+    },
+    {
+      key: 'show_tab_bar',
+      value: 'false',
+      type: 'boolean',
+      label: '功能栏',
+      description: '控制小程序底部功能栏（TabBar）是否显示。选择"true"时显示三个tab（黄历、运势、我的），选择"false"时隐藏功能栏'
     }
   ];
 

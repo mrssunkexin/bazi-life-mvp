@@ -27,6 +27,7 @@ model User {
 
   @@index([openid])
   @@index([unionid])
+  @@map("user")
 }
 
 // 券码表
@@ -43,6 +44,7 @@ model Voucher {
 
   @@index([reportId])
   @@index([fortune2026ReportId])
+  @@map("voucher")
 }
 
 // 报告表
@@ -94,6 +96,7 @@ model Report {
 
   @@index([userId])
   @@index([createdAt])
+  @@map("report")
 }
 
 // AI生成日志表
@@ -124,6 +127,7 @@ model GenerationLog {
   @@index([reportId])
   @@index([createdAt])
   @@index([status])
+  @@map("generationlog")
 }
 
 // 配置表
@@ -138,6 +142,7 @@ model Configuration {
   updatedAt   DateTime @updatedAt
 
   @@index([key])
+  @@map("configuration")
 }
 
 // 2026运势报告表
@@ -193,6 +198,7 @@ model Fortune2026Report {
 
   @@index([userId])
   @@index([createdAt])
+  @@map("fortune2026report")
 }
 
 // 2026运势AI生成日志表
@@ -223,6 +229,7 @@ model Fortune2026GenerationLog {
   @@index([reportId])
   @@index([createdAt])
   @@index([status])
+  @@map("fortune2026generationlog")
 }
 
 // 微信access_token缓存表
@@ -236,4 +243,5 @@ model WechatAccessToken {
 
   @@index([appId])
   @@index([expiresAt])
+  @@map("wechataccesstoken")
 }
